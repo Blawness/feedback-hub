@@ -1,0 +1,109 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  avatar    String?
+  role      String   @default("developer") // admin, developer
+  createdAt DateTime @default(now())
+
+  feedbacks Feedback[]
+  tasks     Task[]
+  comments  Comment[]
+
+  @@index([email])
+}
+
+model Project {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  description  String?
+  url          String?  // homepage or repo URL
+  githubRepoId Int?     @unique // GitHub repo ID for sync
+  apiKey       String   @unique
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  feedbacks Feedback[]
+  tasks     Task[]
+
+  @@index([slug])
+  @@index([apiKey])
+}
+
+model Feedback {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  type        String   // bug, feature, improvement, question
+  priority    String   @default("medium")
+  status      String   @default("open")
+  source      String   @default("api") // api, manual, widget
+  metadata    Json?    // browser, OS, screenshot URL, etc.
+
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id])
+  assigneeId String?
+  assignee   User?    @relation(fields: [assigneeId], references: [id])
+
+  comments Comment[]
+  tasks    Task[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([status])
+  @@index([priority])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  status      String    @default("todo")
+  priority    String    @default("medium")
+  dueDate     DateTime?
+
+  projectId  String
+  project    Project   @relation(fields: [projectId], references: [id])
+  assigneeId String?
+  assignee   User?     @relation(fields: [assigneeId], references: [id])
+  feedbackId String?
+  feedback   Feedback? @relation(fields: [feedbackId], references: [id])
+
+  comments Comment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model Comment {
+  id      String @id @default(cuid())
+  content String
+
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  feedbackId String?
+  feedback   Feedback? @relation(fields: [feedbackId], references: [id])
+  taskId     String?
+  task       Task?     @relation(fields: [taskId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([feedbackId])
+  @@index([taskId])
+}
