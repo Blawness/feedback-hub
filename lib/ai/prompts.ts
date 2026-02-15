@@ -4,6 +4,9 @@ export function feedbackAnalyzerPrompt(title: string, description: string) {
     return `You are a feedback analysis AI for a software project management tool.
 
 Analyze the following user feedback and return a JSON object with these fields:
+- "suggestedTitle": a better, more descriptive title for this feedback
+- "suggestedDescription": a refined, professional, and detailed version of the feedback description
+- "suggestedAgentPrompt": a ready-to-use AI prompt for an IDE coding agent (like Cursor or GitHub Copilot) to implement this feedback. It should include technical context, clear instructions, and expected outcome.
 - "suggestedType": one of "bug", "feature", "improvement", "question"
 - "suggestedPriority": one of "low", "medium", "high", "critical"
 - "summary": a concise 1-2 sentence summary of the feedback

@@ -20,13 +20,30 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, ArrowLeft, ArrowRight } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Search, ArrowLeft, ArrowRight, MoreHorizontal, Eye, Pencil, Trash2, MessageSquarePlus } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { useState } from "react";
 import { AISearch } from "@/components/feedback/ai-search";
-
-import { FeedbackWithRelations } from "@/lib/actions/feedback";
+import { FeedbackDialog } from "@/components/feedback/feedback-dialog";
+import { deleteFeedback } from "@/lib/actions/feedback";
+import { toast } from "sonner";
 
 interface FeedbackItem {
     id: string;
@@ -92,7 +109,20 @@ export function FeedbackPageClient({
     const router = useRouter();
     const params = useSearchParams();
     const [searchValue, setSearchValue] = useState(filters.search || "");
+    const [editingFeedback, setEditingFeedback] = useState<FeedbackItem | null>(null);
+    const [deletingFeedback, setDeletingFeedback] = useState<FeedbackItem | null>(null);
     const totalPages = Math.ceil(total / 20);
+
+    async function confirmDelete() {
+        if (!deletingFeedback) return;
+        try {
+            await deleteFeedback(deletingFeedback.id);
+            toast.success("Feedback deleted successfully");
+        } catch {
+            toast.error("Failed to delete feedback");
+        }
+        setDeletingFeedback(null);
+    }
 
     function updateFilter(key: string, value: string) {
         const newParams = new URLSearchParams(params.toString());
@@ -113,7 +143,7 @@ export function FeedbackPageClient({
         <div className="space-y-4">
             <Card>
                 <CardContent className="pt-6">
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-3 items-end">
                         <div className="relative flex-1 min-w-[200px]">
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
@@ -124,6 +154,18 @@ export function FeedbackPageClient({
                                 className="pl-10"
                             />
                         </div>
+                        <Button variant="secondary" onClick={handleSearch} size="default">
+                            Search
+                        </Button>
+                        <FeedbackDialog
+                            projects={projects}
+                            trigger={
+                                <Button className="gap-2">
+                                    <MessageSquarePlus className="h-4 w-4" />
+                                    Submit
+                                </Button>
+                            }
+                        />
                         <Select
                             value={filters.status || "all"}
                             onValueChange={(v) => updateFilter("status", v)}
@@ -179,63 +221,140 @@ export function FeedbackPageClient({
 
             <Card>
                 <CardContent className="p-0">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Title</TableHead>
-                                <TableHead>Project</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Priority</TableHead>
-                                <TableHead>Date</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {feedbacks.map((fb) => (
-                                <TableRow key={fb.id} className="cursor-pointer hover:bg-muted/50">
-                                    <TableCell>
-                                        <Link
-                                            href={`/feedback/${fb.id}`}
-                                            className="font-medium hover:underline"
-                                        >
-                                            {fb.title}
-                                        </Link>
-                                        <div className="text-xs text-muted-foreground mt-1">
-                                            {fb._count.comments} comments · {fb._count.tasks} tasks
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline">{fb.project.name}</Badge>
-                                    </TableCell>
-                                    <TableCell className="capitalize">{fb.type}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={STATUS_COLORS[fb.status] || "outline"}>
-                                            {fb.status.replace("_", " ")}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span
-                                            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${PRIORITY_COLORS[fb.priority] || ""}`}
-                                        >
-                                            {fb.priority}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell className="text-sm text-muted-foreground">
-                                        {format(new Date(fb.createdAt), "MMM d, yyyy")}
-                                    </TableCell>
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="border-b bg-muted/30 hover:bg-muted/30">
+                                    <TableHead className="px-4 py-3 font-semibold">Title</TableHead>
+                                    <TableHead className="px-4 py-3 font-semibold">Project</TableHead>
+                                    <TableHead className="px-4 py-3 font-semibold">Type</TableHead>
+                                    <TableHead className="px-4 py-3 font-semibold">Status</TableHead>
+                                    <TableHead className="px-4 py-3 font-semibold">Priority</TableHead>
+                                    <TableHead className="px-4 py-3 font-semibold">Date</TableHead>
+                                    <TableHead className="px-4 py-3 font-semibold text-right w-[80px]">Action</TableHead>
                                 </TableRow>
-                            ))}
-                            {feedbacks.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                                        No feedback found. Adjust filters or submit feedback via API.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {feedbacks.map((fb) => (
+                                    <TableRow key={fb.id} className="group">
+                                        <TableCell className="px-4 py-3">
+                                            <Link
+                                                href={`/feedback/${fb.id}`}
+                                                className="font-medium hover:underline text-foreground"
+                                            >
+                                                {fb.title}
+                                            </Link>
+                                            <div className="text-xs text-muted-foreground mt-0.5">
+                                                {fb._count.comments} comments · {fb._count.tasks} tasks
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="px-4 py-3">
+                                            <Badge variant="outline" className="font-normal">
+                                                {fb.project.name}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="px-4 py-3 capitalize text-muted-foreground">
+                                            {fb.type}
+                                        </TableCell>
+                                        <TableCell className="px-4 py-3">
+                                            <Badge variant={STATUS_COLORS[fb.status] || "outline"} className="capitalize">
+                                                {fb.status.replace("_", " ")}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="px-4 py-3">
+                                            <span
+                                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${PRIORITY_COLORS[fb.priority] || "bg-muted text-muted-foreground"}`}
+                                            >
+                                                {fb.priority}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
+                                            {format(new Date(fb.createdAt), "MMM d, yyyy")}
+                                        </TableCell>
+                                        <TableCell className="px-4 py-3 text-right">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 opacity-70 group-hover:opacity-100"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-[140px]">
+                                                    <DropdownMenuItem asChild>
+                                                        <Link href={`/feedback/${fb.id}`}>
+                                                            <Eye className="mr-2 h-4 w-4" />
+                                                            View
+                                                        </Link>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => setEditingFeedback(fb)}>
+                                                        <Pencil className="mr-2 h-4 w-4" />
+                                                        Edit
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() => setDeletingFeedback(fb)}
+                                                        className="text-destructive focus:text-destructive"
+                                                    >
+                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                        Delete
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {feedbacks.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="text-center py-16 text-muted-foreground">
+                                            No feedback found. Adjust filters or submit feedback via API.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
+
+            {editingFeedback && (
+                <FeedbackDialog
+                    projects={projects}
+                    initialData={{
+                        id: editingFeedback.id,
+                        title: editingFeedback.title,
+                        description: editingFeedback.description,
+                        type: editingFeedback.type as "bug" | "feature" | "improvement" | "question",
+                        priority: editingFeedback.priority as "low" | "medium" | "high" | "critical",
+                        projectId: editingFeedback.projectId,
+                    }}
+                    open={!!editingFeedback}
+                    onOpenChange={(open) => !open && setEditingFeedback(null)}
+                    trigger={<span />}
+                />
+            )}
+
+            <AlertDialog open={!!deletingFeedback} onOpenChange={(open) => !open && setDeletingFeedback(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete feedback?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete &quot;{deletingFeedback?.title}&quot;. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmDelete}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {totalPages > 1 && (
                 <div className="flex items-center justify-between">

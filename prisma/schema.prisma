@@ -67,6 +67,7 @@ model Feedback {
   aiSuggestedType     String?  // AI's suggested type classification
   aiSuggestedPriority String?  // AI's suggested priority
   aiConfidence        Float?   // AI confidence score 0-1
+  agentPrompt         String?  @db.Text
 
   projectId  String
   project    Project  @relation(fields: [projectId], references: [id])

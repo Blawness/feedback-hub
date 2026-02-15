@@ -1,4 +1,7 @@
 export interface FeedbackAnalysis {
+    suggestedTitle?: string;
+    suggestedDescription?: string;
+    suggestedAgentPrompt?: string;
     suggestedType: "bug" | "feature" | "improvement" | "question";
     suggestedPriority: "low" | "medium" | "high" | "critical";
     summary: string;

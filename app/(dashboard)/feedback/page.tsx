@@ -12,8 +12,10 @@ export const metadata: Metadata = {
 
 async function FeedbackContent({
     searchParams,
+    projects,
 }: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+    projects: any[];
 }) {
     const params = await searchParams;
     const status = typeof params.status === "string" ? params.status : undefined;
@@ -22,10 +24,7 @@ async function FeedbackContent({
     const search = typeof params.search === "string" ? params.search : undefined;
     const page = typeof params.page === "string" ? parseInt(params.page) : 1;
 
-    const [{ feedbacks, total }, projects] = await Promise.all([
-        getFeedbacks({ status, projectId, priority, search, page }),
-        getProjects(),
-    ]);
+    const { feedbacks, total } = await getFeedbacks({ status, projectId, priority, search, page });
 
     return (
         <FeedbackPageClient
@@ -38,11 +37,14 @@ async function FeedbackContent({
     );
 }
 
-export default function FeedbackPage({
+export default async function FeedbackPage({
     searchParams,
 }: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+    const allProjects = await getProjects();
+    const projects = allProjects.filter((p) => p.isActive);
+
     return (
         <div className="space-y-6">
             <div>
@@ -52,7 +54,7 @@ export default function FeedbackPage({
                 </p>
             </div>
             <Suspense fallback={<Skeleton className="h-[500px] rounded-xl" />}>
-                <FeedbackContent searchParams={searchParams} />
+                <FeedbackContent searchParams={searchParams} projects={projects} />
             </Suspense>
         </div>
     );

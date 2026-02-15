@@ -33,13 +33,13 @@ export function FeedbackDialog({ projects, trigger, initialData, open: controlle
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 {trigger || (
-                    <Button variant="outline" size="sm" className="gap-2 shadow-lg">
+                    <Button variant="outline" size="sm" className="gap-2">
                         <MessageSquarePlus className="h-4 w-4" />
                         Feedback
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[650px]">
                 <DialogHeader>
                     <DialogTitle>{initialData ? 'Edit Feedback' : 'Submit Feedback'}</DialogTitle>
                     <DialogDescription>

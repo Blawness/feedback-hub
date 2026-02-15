@@ -4,8 +4,9 @@ import { useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -28,6 +29,7 @@ import {
 
 // ... imports
 import { createFeedback, updateFeedback, FeedbackFormData } from '@/lib/actions/feedback';
+import { analyzeFeedback } from '@/lib/actions/ai';
 
 const FeedbackSchema = z.object({
     title: z.string().min(5, 'Title must be at least 5 characters'),
@@ -35,6 +37,7 @@ const FeedbackSchema = z.object({
     type: z.enum(['bug', 'feature', 'improvement', 'question']),
     priority: z.enum(['low', 'medium', 'high', 'critical']),
     projectId: z.string().min(1, 'Project is required'),
+    agentPrompt: z.string().optional(),
 });
 
 type FeedbackFormValues = z.infer<typeof FeedbackSchema>;
@@ -47,6 +50,7 @@ interface FeedbackFormProps {
 
 export function FeedbackForm({ projects, initialData, onSuccess }: FeedbackFormProps) {
     const [isPending, startTransition] = useTransition();
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
 
     const form = useForm<FeedbackFormValues>({
         resolver: zodResolver(FeedbackSchema),
@@ -56,8 +60,48 @@ export function FeedbackForm({ projects, initialData, onSuccess }: FeedbackFormP
             type: initialData?.type || 'bug',
             priority: initialData?.priority || 'medium',
             projectId: initialData?.projectId || projects[0]?.id || '',
+            agentPrompt: initialData?.agentPrompt || '',
         },
     });
+
+    async function handleAIAnalysis() {
+        const description = form.getValues('description');
+        const title = form.getValues('title');
+
+        if (!description || description.length < 10) {
+            toast.error('Please provide a more detailed description first (min 10 chars).');
+            return;
+        }
+
+        setIsAnalyzing(true);
+        try {
+            const result = await analyzeFeedback(title, description);
+            if (result) {
+                if (result.suggestedTitle) {
+                    form.setValue('title', result.suggestedTitle);
+                }
+                if (result.suggestedDescription) {
+                    form.setValue('description', result.suggestedDescription);
+                }
+                if (result.suggestedAgentPrompt) {
+                    form.setValue('agentPrompt', result.suggestedAgentPrompt);
+                }
+                form.setValue('type', result.suggestedType);
+                form.setValue('priority', result.suggestedPriority);
+
+                toast.success('Feedback enhanced with AI!', {
+                    description: `Confidence: ${Math.round(result.confidence * 100)}%`,
+                });
+            } else {
+                toast.error('AI is currently unavailable.');
+            }
+        } catch (error) {
+            toast.error('Failed to analyze feedback.');
+            console.error(error);
+        } finally {
+            setIsAnalyzing(false);
+        }
+    }
 
     function onSubmit(data: FeedbackFormValues) {
         startTransition(async () => {
@@ -71,24 +115,21 @@ export function FeedbackForm({ projects, initialData, onSuccess }: FeedbackFormP
 
                 if (result.success) {
                     if (!initialData) form.reset();
-                    if (result.warning) {
-                        toast.warning('Saved locally, but GitHub sync failed.', {
-                            description: result.warning,
-                        });
-                    } else {
-                        // Only createFeedback returns githubUrl
-                        const githubUrl = 'githubUrl' in result ? (result as any).githubUrl : null;
 
-                        toast.success(initialData ? 'Feedback updated!' : 'Feedback submitted!', {
-                            action: (!initialData && githubUrl) ? {
-                                label: 'View Issue',
-                                onClick: () => window.open(githubUrl, '_blank'),
-                            } : undefined,
-                        });
-                    }
+                    const githubUrl = 'githubUrl' in result ? (result as any).githubUrl : null;
+                    const isNew = !initialData;
+
+                    toast.success(isNew ? 'Feedback submitted & Task created!' : 'Feedback updated!', {
+                        description: (result as any).warning || (isNew ? 'Successfully created feedback and linked task.' : 'Your changes have been saved.'),
+                        action: (isNew && githubUrl) ? {
+                            label: 'View Issue',
+                            onClick: () => window.open(githubUrl, '_blank'),
+                        } : undefined,
+                    });
+
                     onSuccess?.();
                 } else {
-                    toast.error(result.error || 'Failed to submit feedback');
+                    toast.error((result as any).error || 'Failed to submit feedback');
                 }
             } catch (error) {
                 toast.error('Something went wrong. Please try again.');
@@ -203,7 +244,24 @@ export function FeedbackForm({ projects, initialData, onSuccess }: FeedbackFormP
                     name="description"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Description</FormLabel>
+                            <div className="flex items-center justify-between">
+                                <FormLabel>Description</FormLabel>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs gap-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                    onClick={handleAIAnalysis}
+                                    disabled={isAnalyzing || isPending}
+                                >
+                                    {isAnalyzing ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                        <Sparkles className="h-3 w-3" />
+                                    )}
+                                    AI Enhance
+                                </Button>
+                            </div>
                             <FormControl>
                                 <Textarea
                                     placeholder="Detailed description..."
@@ -216,7 +274,28 @@ export function FeedbackForm({ projects, initialData, onSuccess }: FeedbackFormP
                     )}
                 />
 
-                <div className="flex justify-end">
+                <FormField
+                    control={form.control}
+                    name="agentPrompt"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="flex items-center gap-2">
+                                Agent Prompt
+                                <span className="text-[10px] font-normal text-muted-foreground bg-muted px-1.5 py-0.5 rounded">IDE Ready</span>
+                            </FormLabel>
+                            <FormControl>
+                                <Textarea
+                                    placeholder="AI generated prompt for Cursor/IDE..."
+                                    className="min-h-[80px] font-mono text-xs bg-muted/30"
+                                    {...field}
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <div className="flex justify-end pt-4">
                     <Button type="submit" disabled={isPending}>
                         {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {initialData ? 'Update Feedback' : 'Submit Feedback'}

@@ -12,6 +12,7 @@ const FeedbackSchema = z.object({
     type: z.enum(["bug", "feature", "improvement", "question"]),
     priority: z.enum(["low", "medium", "high", "critical"]),
     projectId: z.string(),
+    agentPrompt: z.string().optional(),
 });
 
 export type FeedbackFormData = z.infer<typeof FeedbackSchema>;
@@ -86,7 +87,7 @@ export async function createFeedback(data: FeedbackFormData) {
         return { success: false, error: "Invalid fields" };
     }
 
-    const { title, description, type, priority, projectId } = validatedFields.data;
+    const { title, description, type, priority, projectId, agentPrompt } = validatedFields.data;
 
     // Fetch user (Mocking for now as we don't have auth context passed)
     // In real app: const session = await auth(); const userId = session?.user?.id;
@@ -105,7 +106,21 @@ export async function createFeedback(data: FeedbackFormData) {
             projectId,
             source: "webapp",
             status: "OPEN",
-            assigneeId: user.id
+            assigneeId: user.id,
+            agentPrompt: agentPrompt || null
+        },
+    });
+
+    // 1.1 Create Task automatically (all feedback becomes a task)
+    await prisma.task.create({
+        data: {
+            title: `[FEEDBACK] ${title}`,
+            description: description,
+            priority,
+            projectId,
+            feedbackId: feedback.id,
+            status: "todo",
+            assigneeId: user.id,
         },
     });
 
@@ -173,6 +188,7 @@ ${description}
                     aiSuggestedType: analysis.suggestedType,
                     aiSuggestedPriority: analysis.suggestedPriority,
                     aiConfidence: analysis.confidence,
+                    agentPrompt: analysis.suggestedAgentPrompt || feedback.agentPrompt
                 } as any,
             });
         }
@@ -198,7 +214,7 @@ export async function updateFeedback(id: string, data: FeedbackFormData) {
         return { success: false, error: "Invalid fields" };
     }
 
-    const { title, description, type, priority, projectId } = validatedFields.data;
+    const { title, description, type, priority, projectId, agentPrompt } = validatedFields.data;
 
     // 1. Update in DB
     const feedback = await prisma.feedback.update({
@@ -209,6 +225,7 @@ export async function updateFeedback(id: string, data: FeedbackFormData) {
             type,
             priority,
             projectId,
+            agentPrompt: agentPrompt || null,
         },
     });
 
@@ -262,7 +279,7 @@ export async function deleteFeedback(id: string) {
 export async function updateFeedbackStatus(id: string, status: string) {
     await prisma.feedback.update({
         where: { id },
-        data: { status: status as any },
+        data: { status: status.toUpperCase() as any },
     });
     revalidatePath("/feedback");
 }
