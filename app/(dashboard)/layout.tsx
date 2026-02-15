@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { FeedbackWrapper } from "@/components/feedback/feedback-wrapper";
+import { ChatAssistant } from "@/components/ai/chat-assistant";
 
 export default function DashboardLayout({
     children,
@@ -17,6 +18,7 @@ export default function DashboardLayout({
                     <FeedbackWrapper />
                 </main>
             </div>
+            <ChatAssistant />
         </div>
     );
 }

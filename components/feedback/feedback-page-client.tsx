@@ -24,6 +24,7 @@ import { Search, Plus, ArrowLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { useState } from "react";
+import { AISearch } from "@/components/feedback/ai-search";
 
 import { FeedbackWithRelations } from "@/lib/actions/feedback";
 
@@ -172,6 +173,9 @@ export function FeedbackPageClient({
                     </div>
                 </CardContent>
             </Card>
+
+            {/* AI-Powered Search */}
+            <AISearch />
 
             <Card>
                 <CardContent className="p-0">

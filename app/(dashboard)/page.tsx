@@ -1,6 +1,7 @@
 import { getDashboardStats } from "@/lib/actions/projects";
 import { StatsCards } from "@/components/dashboard/stats-cards";
 import { RecentFeedbackTable } from "@/components/dashboard/recent-feedback";
+import { AIInsightsCard } from "@/components/dashboard/ai-insights-card";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -19,7 +20,8 @@ async function DashboardContent() {
                 <div className="col-span-full lg:col-span-4">
                     <RecentFeedbackTable feedbacks={stats.recentFeedbacks} projects={stats.activeProjects} />
                 </div>
-                <div className="col-span-full lg:col-span-3">
+                <div className="col-span-full lg:col-span-3 space-y-4">
+                    <AIInsightsCard />
                     <div className="rounded-xl border bg-card text-card-foreground shadow p-6">
                         <h3 className="text-base font-semibold mb-4">Quick Actions</h3>
                         <div className="space-y-3 text-sm text-muted-foreground">

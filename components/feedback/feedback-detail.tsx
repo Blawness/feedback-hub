@@ -21,10 +21,14 @@ import {
     Clock,
     User,
     FolderGit2,
+    Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { updateFeedbackStatus } from "@/lib/actions/feedback";
+import { AISuggestedReply } from "@/components/feedback/ai-suggested-reply";
+import { AIConvertTaskButton } from "@/components/feedback/ai-convert-task-button";
+import { AIBadge } from "@/components/ai/ai-badge";
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
     bug: <Bug className="h-5 w-5 text-red-500" />,
@@ -54,6 +58,10 @@ interface FeedbackDetailProps {
             user: { id: string; name: string; email: string };
         }[];
         tasks: { id: string; title: string; status: string }[];
+        aiSummary?: string | null;
+        aiSuggestedType?: string | null;
+        aiSuggestedPriority?: string | null;
+        aiConfidence?: number | null;
     };
 }
 
@@ -83,7 +91,15 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
                             <div className="flex items-start gap-3">
                                 {TYPE_ICONS[feedback.type] || <Bug className="h-5 w-5" />}
                                 <div className="flex-1">
-                                    <CardTitle className="text-xl">{feedback.title}</CardTitle>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <CardTitle className="text-xl">{feedback.title}</CardTitle>
+                                        <AIBadge
+                                            aiSummary={feedback.aiSummary}
+                                            aiSuggestedType={feedback.aiSuggestedType}
+                                            aiSuggestedPriority={feedback.aiSuggestedPriority}
+                                            aiConfidence={feedback.aiConfidence}
+                                        />
+                                    </div>
                                     <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
                                         <Clock className="h-3 w-3" />
                                         {format(new Date(feedback.createdAt), "MMM d, yyyy 'at' h:mm a")}
@@ -142,6 +158,9 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
                             ))}
                         </CardContent>
                     </Card>
+
+                    {/* AI Suggested Reply */}
+                    <AISuggestedReply feedbackId={feedback.id} />
                 </div>
 
                 <div className="space-y-4">
@@ -193,6 +212,11 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* AI Convert to Task */}
+                    <div className="flex">
+                        <AIConvertTaskButton feedbackId={feedback.id} feedbackTitle={feedback.title} />
+                    </div>
 
                     {feedback.tasks.length > 0 && (
                         <Card>

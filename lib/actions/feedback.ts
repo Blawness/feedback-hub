@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath, cacheLife } from "next/cache";
 import { z } from "zod";
 import { Octokit } from "@octokit/rest";
+import { analyzeFeedback } from "@/lib/actions/ai";
 
 const FeedbackSchema = z.object({
     title: z.string().min(5, "Title must be at least 5 characters"),
@@ -159,6 +160,24 @@ ${description}
     } catch (error) {
         console.error("GitHub Sync Error:", error);
         warning = "Failed to sync with GitHub. Saved locally.";
+    }
+
+    // 3. AI Analysis (non-blocking)
+    try {
+        const analysis = await analyzeFeedback(title, description);
+        if (analysis) {
+            await prisma.feedback.update({
+                where: { id: feedback.id },
+                data: {
+                    aiSummary: analysis.summary,
+                    aiSuggestedType: analysis.suggestedType,
+                    aiSuggestedPriority: analysis.suggestedPriority,
+                    aiConfidence: analysis.confidence,
+                },
+            });
+        }
+    } catch (error) {
+        console.error("AI analysis failed (non-blocking):", error);
     }
 
     revalidatePath("/feedback");
