@@ -98,7 +98,7 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
                                 {feedback.description}
                             </p>
 
-                            {feedback.metadata && (
+                            {Boolean(feedback.metadata) && (
                                 <>
                                     <Separator className="my-4" />
                                     <div>

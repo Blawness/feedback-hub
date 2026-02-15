@@ -25,6 +25,8 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { useState } from "react";
 
+import { FeedbackWithRelations } from "@/lib/actions/feedback";
+
 interface FeedbackItem {
     id: string;
     title: string;
@@ -37,6 +39,10 @@ interface FeedbackItem {
     project: { id: string; name: string; slug: string };
     assignee: { id: string; name: string; email: string } | null;
     _count: { comments: number; tasks: number };
+    updatedAt: Date;
+    metadata: any;
+    projectId: string;
+    assigneeId: string | null;
 }
 
 interface Project {
@@ -46,6 +52,11 @@ interface Project {
 }
 
 const STATUS_COLORS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+    OPEN: "destructive",
+    IN_PROGRESS: "default",
+    RESOLVED: "secondary",
+    CLOSED: "outline",
+    // Add lowercase mappings just in case
     open: "destructive",
     in_progress: "default",
     resolved: "secondary",

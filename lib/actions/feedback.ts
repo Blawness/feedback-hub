@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, cacheLife } from "next/cache";
 import { z } from "zod";
 import { Octokit } from "@octokit/rest";
 
@@ -14,6 +14,19 @@ const FeedbackSchema = z.object({
 });
 
 export type FeedbackFormData = z.infer<typeof FeedbackSchema>;
+
+import { Prisma } from "@prisma/client";
+
+// ... (other imports)
+
+// Define the type explicitly using Prisma's generated types
+export type FeedbackWithRelations = Prisma.FeedbackGetPayload<{
+    include: {
+        project: { select: { id: true, name: true, slug: true } },
+        assignee: { select: { id: true, name: true, email: true } },
+        _count: { select: { comments: true, tasks: true } },
+    }
+}>;
 
 export async function getFeedbacks({
     projectId,
@@ -30,15 +43,18 @@ export async function getFeedbacks({
     page?: number;
     limit?: number;
 }) {
-    const where = {
+    // "use cache";
+    // cacheLife("minutes");
+    // ... (rest of logic same)
+    const where: Prisma.FeedbackWhereInput = {
         ...(projectId ? { projectId } : {}),
-        ...(status ? { status } : {}),
+        ...(status ? { status: status as any } : {}), // Cast because status string might not match Enum exactly if passing lowercase
         ...(priority ? { priority } : {}),
         ...(search
             ? {
                 OR: [
-                    { title: { contains: search, mode: "insensitive" as const } },
-                    { description: { contains: search, mode: "insensitive" as const } },
+                    { title: { contains: search, mode: "insensitive" } },
+                    { description: { contains: search, mode: "insensitive" } },
                 ],
             }
             : {}),
@@ -59,7 +75,7 @@ export async function getFeedbacks({
         prisma.feedback.count({ where }),
     ]);
 
-    return { feedbacks, total, page, limit };
+    return { feedbacks: feedbacks as FeedbackWithRelations[], total, page, limit };
 }
 
 export async function createFeedback(data: FeedbackFormData) {
@@ -179,34 +195,30 @@ export async function updateFeedback(id: string, data: FeedbackFormData) {
 
     let warning: string | null = null;
 
-    // 2. Sync to GitHub (if linked)
-    if (feedback.githubIssueNumber) {
-        try {
-            const token = process.env.GITHUB_TOKEN;
-            const owner = process.env.GITHUB_USERNAME || "Blawness";
-            const repo = "feedback-hub";
+    // 2. Sync to GitHub
+    try {
+        const token = process.env.GITHUB_TOKEN;
+        const owner = process.env.GITHUB_USERNAME || "Blawness";
+        const repo = "feedback-hub";
 
-            if (token) {
-                const octokit = new Octokit({ auth: token });
+        if (token) {
+            const octokit = new Octokit({ auth: token });
+            const issueTitle = `[${type.toUpperCase()}] ${title}`;
 
-                // Update Issue Title and Body (we append a note about the update?)
-                // Actually, replacing body might be aggressive if we want to keep history.
-                // But for sync, let's just update title and labels. User might edit body on GH side.
-                // Let's stick to updating basic fields.
-
+            // Check if we have a githubIssueNumber
+            if (feedback.githubIssueNumber) {
                 await octokit.rest.issues.update({
                     owner,
                     repo,
                     issue_number: feedback.githubIssueNumber,
-                    title: `[${type.toUpperCase()}] ${title}`,
-                    // body: description, // Optional: might overwrite comments or manual edits on GH. Let's start with just Title/Labels.
+                    title: issueTitle,
                     labels: [type, priority, "feedback-hub"],
                 });
             }
-        } catch (error) {
-            console.error("GitHub Update Error:", error);
-            warning = "Updated locally. GitHub sync failed.";
         }
+    } catch (error) {
+        console.error("GitHub Update Error:", error);
+        warning = "Updated locally. GitHub sync failed.";
     }
 
     revalidatePath("/feedback");
@@ -231,7 +243,7 @@ export async function deleteFeedback(id: string) {
 export async function updateFeedbackStatus(id: string, status: string) {
     await prisma.feedback.update({
         where: { id },
-        data: { status },
+        data: { status: status as any },
     });
     revalidatePath("/feedback");
 }

@@ -71,7 +71,7 @@ export async function GET(request: Request) {
         const feedbacks = await prisma.feedback.findMany({
             where: {
                 projectId: project.id,
-                ...(status ? { status } : {}),
+                ...(status ? { status: status as any } : {}),
             },
             orderBy: { createdAt: "desc" },
             skip: (page - 1) * limit,
@@ -85,7 +85,7 @@ export async function GET(request: Request) {
         const total = await prisma.feedback.count({
             where: {
                 projectId: project.id,
-                ...(status ? { status } : {}),
+                ...(status ? { status: status as any } : {}),
             },
         });
 

@@ -40,8 +40,8 @@ interface Feedback {
     title: string;
     description: string;
     status: string;
-    priority: "low" | "medium" | "high" | "critical";
-    type: "bug" | "feature" | "improvement" | "question";
+    priority: string;
+    type: string;
     createdAt: Date;
     projectId: string;
     project: { name: string };
@@ -153,7 +153,7 @@ export function RecentFeedbackTable({ feedbacks, projects }: RecentFeedbackTable
             {editingFeedback && (
                 <FeedbackDialog
                     projects={projects}
-                    initialData={editingFeedback}
+                    initialData={editingFeedback as any}
                     open={!!editingFeedback}
                     onOpenChange={(open) => !open && setEditingFeedback(null)}
                     trigger={<span />} // Dummy trigger since we control state

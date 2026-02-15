@@ -43,7 +43,7 @@ export async function regenerateApiKey(id: string) {
 export async function getDashboardStats() {
     const [projectCount, feedbackCount, taskCount, recentFeedbacks, activeProjects] = await Promise.all([
         prisma.project.count({ where: { isActive: true } }),
-        prisma.feedback.count({ where: { status: { not: "resolved" } } }),
+        prisma.feedback.count({ where: { status: { not: "RESOLVED" } } }),
         prisma.task.count({ where: { status: { not: "done" } } }),
         prisma.feedback.findMany({
             take: 5,
