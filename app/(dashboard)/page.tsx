@@ -17,7 +17,7 @@ async function DashboardContent() {
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                 <div className="col-span-full lg:col-span-4">
-                    <RecentFeedbackTable feedbacks={stats.recentFeedbacks} />
+                    <RecentFeedbackTable feedbacks={stats.recentFeedbacks} projects={stats.activeProjects} />
                 </div>
                 <div className="col-span-full lg:col-span-3">
                     <div className="rounded-xl border bg-card text-card-foreground shadow p-6">

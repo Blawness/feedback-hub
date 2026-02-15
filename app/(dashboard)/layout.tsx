@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { FeedbackWrapper } from "@/components/feedback/feedback-wrapper";
 
 export default function DashboardLayout({
     children,
@@ -11,7 +12,10 @@ export default function DashboardLayout({
             <Sidebar />
             <div className="flex-1 flex flex-col">
                 <Header />
-                <main className="flex-1 p-6 lg:p-8">{children}</main>
+                <main className="flex-1 p-6 lg:p-8 relative">
+                    {children}
+                    <FeedbackWrapper />
+                </main>
             </div>
         </div>
     );

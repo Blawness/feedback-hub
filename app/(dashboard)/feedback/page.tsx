@@ -13,13 +13,14 @@ export const metadata: Metadata = {
 async function FeedbackContent({
     searchParams,
 }: {
-    searchParams: { [key: string]: string | string[] | undefined };
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-    const status = typeof searchParams.status === "string" ? searchParams.status : undefined;
-    const projectId = typeof searchParams.projectId === "string" ? searchParams.projectId : undefined;
-    const priority = typeof searchParams.priority === "string" ? searchParams.priority : undefined;
-    const search = typeof searchParams.search === "string" ? searchParams.search : undefined;
-    const page = typeof searchParams.page === "string" ? parseInt(searchParams.page) : 1;
+    const params = await searchParams;
+    const status = typeof params.status === "string" ? params.status : undefined;
+    const projectId = typeof params.projectId === "string" ? params.projectId : undefined;
+    const priority = typeof params.priority === "string" ? params.priority : undefined;
+    const search = typeof params.search === "string" ? params.search : undefined;
+    const page = typeof params.page === "string" ? parseInt(params.page) : 1;
 
     const [{ feedbacks, total }, projects] = await Promise.all([
         getFeedbacks({ status, projectId, priority, search, page }),
@@ -37,13 +38,11 @@ async function FeedbackContent({
     );
 }
 
-export default async function FeedbackPage({
+export default function FeedbackPage({
     searchParams,
 }: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-    const params = await searchParams;
-
     return (
         <div className="space-y-6">
             <div>
@@ -53,7 +52,7 @@ export default async function FeedbackPage({
                 </p>
             </div>
             <Suspense fallback={<Skeleton className="h-[500px] rounded-xl" />}>
-                <FeedbackContent searchParams={params} />
+                <FeedbackContent searchParams={searchParams} />
             </Suspense>
         </div>
     );

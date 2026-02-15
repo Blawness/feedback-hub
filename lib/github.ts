@@ -25,11 +25,12 @@ export async function syncGitHubRepos() {
             headers.Authorization = `token ${GITHUB_TOKEN}`;
         }
 
-        // Fetch repos (pagination might be needed if > 100, currently 24 so OK)
-        const response = await fetch(
-            `https://api.github.com/users/${GITHUB_USERNAME}/repos?per_page=100&sort=updated`,
-            { headers }
-        );
+        // Use /user/repos instead of /users/{username}/repos to get private repos when authenticated
+        const url = GITHUB_TOKEN
+            ? `https://api.github.com/user/repos?per_page=100&sort=updated`
+            : `https://api.github.com/users/${GITHUB_USERNAME}/repos?per_page=100&sort=updated`;
+
+        const response = await fetch(url, { headers });
 
         if (!response.ok) {
             throw new Error(`GitHub API error: ${response.statusText}`);

@@ -42,15 +42,24 @@ model Project {
   @@index([apiKey])
 }
 
+enum FeedbackStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
 model Feedback {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   title       String
   description String
-  type        String   // bug, feature, improvement, question
-  priority    String   @default("medium")
-  status      String   @default("open")
-  source      String   @default("api") // api, manual, widget
-  metadata    Json?    // browser, OS, screenshot URL, etc.
+  type        String         // bug, feature, improvement, question
+  priority    String         @default("medium")
+  status      FeedbackStatus @default(OPEN)
+  source      String         @default("api") // api, manual, widget
+  metadata    Json?          // browser, OS, screenshot URL, etc.
+  
+  githubIssueNumber Int?
+  githubUrl         String?
 
   projectId  String
   project    Project  @relation(fields: [projectId], references: [id])
