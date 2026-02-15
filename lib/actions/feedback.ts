@@ -151,7 +151,7 @@ ${description}
                 data: {
                     githubIssueNumber,
                     githubUrl
-                }
+                } as any
             });
         } else {
             warning = "GitHub token not configured. Saved locally only.";
@@ -173,7 +173,7 @@ ${description}
                     aiSuggestedType: analysis.suggestedType,
                     aiSuggestedPriority: analysis.suggestedPriority,
                     aiConfidence: analysis.confidence,
-                },
+                } as any,
             });
         }
     } catch (error) {
@@ -225,11 +225,11 @@ export async function updateFeedback(id: string, data: FeedbackFormData) {
             const issueTitle = `[${type.toUpperCase()}] ${title}`;
 
             // Check if we have a githubIssueNumber
-            if (feedback.githubIssueNumber) {
+            if ((feedback as any).githubIssueNumber) {
                 await octokit.rest.issues.update({
                     owner,
                     repo,
-                    issue_number: feedback.githubIssueNumber,
+                    issue_number: (feedback as any).githubIssueNumber,
                     title: issueTitle,
                     labels: [type, priority, "feedback-hub"],
                 });
