@@ -276,11 +276,30 @@ export async function deleteFeedback(id: string) {
     return { success: true };
 }
 
+// Define optional mapping from FeedbackStatus (string) to Task status (string)
+const TASK_STATUS_MAP: Record<string, string> = {
+    OPEN: "todo",
+    IN_PROGRESS: "in_progress",
+    RESOLVED: "done",
+    CLOSED: "done",
+};
+
 export async function updateFeedbackStatus(id: string, status: string) {
-    await prisma.feedback.update({
+    const feedback = await prisma.feedback.update({
         where: { id },
         data: { status: status.toUpperCase() as any },
+        include: { tasks: true },
     });
+
+    // Sync linked tasks
+    const taskStatus = TASK_STATUS_MAP[status.toUpperCase()];
+    if (taskStatus && feedback.tasks.length > 0) {
+        await prisma.task.updateMany({
+            where: { feedbackId: id },
+            data: { status: taskStatus },
+        });
+    }
+
     revalidatePath("/feedback");
 }
 
