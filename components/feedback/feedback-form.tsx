@@ -82,7 +82,12 @@ export function FeedbackForm({ projects, initialData, onSuccess }: FeedbackFormP
         try {
             const result = await analyzeFeedback(title, description);
             if (result) {
-                setLastAnalyzedContent(currentContent);
+                const newTitle = result.suggestedTitle || title;
+                const newDescription = result.suggestedDescription || description;
+
+                // Update tracker to the NEW state to prevent re-triggering loop
+                setLastAnalyzedContent(`${newTitle}|${newDescription}`);
+
                 if (result.suggestedTitle) {
                     form.setValue('title', result.suggestedTitle, { shouldDirty: true });
                 }
@@ -113,15 +118,19 @@ export function FeedbackForm({ projects, initialData, onSuccess }: FeedbackFormP
 
     // Debounced Auto-Analysis for "Real-time" feel
     useEffect(() => {
+        let timer: NodeJS.Timeout;
         const subscription = form.watch((value, { name }) => {
             if (name === 'description' || name === 'title') {
-                const timer = setTimeout(() => {
+                clearTimeout(timer);
+                timer = setTimeout(() => {
                     handleAIAnalysis(true);
                 }, 2000);
-                return () => clearTimeout(timer);
             }
         });
-        return () => subscription.unsubscribe();
+        return () => {
+            subscription.unsubscribe();
+            clearTimeout(timer);
+        };
     }, [form, handleAIAnalysis]);
 
     function onSubmit(data: FeedbackFormValues) {
