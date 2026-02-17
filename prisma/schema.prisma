@@ -29,7 +29,8 @@ model Project {
   slug         String   @unique
   description  String?
   url          String?  // homepage or repo URL
-  githubRepoId Int?     @unique // GitHub repo ID for sync
+  githubRepoId       Int?     @unique // GitHub repo ID for sync
+  githubRepoFullName String?  // e.g., "Blawness/feedback-hub"
   apiKey       String   @unique
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
@@ -124,4 +125,18 @@ model Comment {
 
   @@index([feedbackId])
   @@index([taskId])
+}
+
+model AiSettings {
+  id              String   @id @default("default")
+  language        String   @default("auto")
+  model           String   @default("gemini-2.0-flash")
+  temperature     Float    @default(0.7)
+  maxOutputTokens Int      @default(2048)
+  topP            Float    @default(0.95)
+  topK            Int      @default(40)
+  masterPrompt    String?  @db.Text
+  templateId      String?  @default("default")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

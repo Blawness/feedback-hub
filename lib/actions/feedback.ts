@@ -1,10 +1,16 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { revalidatePath, cacheLife } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { Octokit } from "@octokit/rest";
 import { analyzeFeedback } from "@/lib/actions/ai";
+import {
+    createGitHubIssue,
+    updateGitHubIssue,
+    syncGitHubIssueState,
+    closeGitHubIssue,
+} from "@/lib/github-issues";
+import { Prisma } from "@prisma/client";
 
 const FeedbackSchema = z.object({
     title: z.string().min(5, "Title must be at least 5 characters"),
@@ -17,17 +23,12 @@ const FeedbackSchema = z.object({
 
 export type FeedbackFormData = z.infer<typeof FeedbackSchema>;
 
-import { Prisma } from "@prisma/client";
-
-// ... (other imports)
-
-// Define the type explicitly using Prisma's generated types
 export type FeedbackWithRelations = Prisma.FeedbackGetPayload<{
     include: {
-        project: { select: { id: true, name: true, slug: true } },
-        assignee: { select: { id: true, name: true, email: true } },
-        _count: { select: { comments: true, tasks: true } },
-    }
+        project: { select: { id: true; name: true; slug: true } };
+        assignee: { select: { id: true; name: true; email: true } };
+        _count: { select: { comments: true; tasks: true } };
+    };
 }>;
 
 export async function getFeedbacks({
@@ -45,12 +46,9 @@ export async function getFeedbacks({
     page?: number;
     limit?: number;
 }) {
-    // "use cache";
-    // cacheLife("minutes");
-    // ... (rest of logic same)
     const where: Prisma.FeedbackWhereInput = {
         ...(projectId ? { projectId } : {}),
-        ...(status ? { status: status as any } : {}), // Cast because status string might not match Enum exactly if passing lowercase
+        ...(status ? { status: status as any } : {}),
         ...(priority ? { priority } : {}),
         ...(search
             ? {
@@ -89,14 +87,18 @@ export async function createFeedback(data: FeedbackFormData) {
 
     const { title, description, type, priority, projectId, agentPrompt } = validatedFields.data;
 
-    // Fetch user (Mocking for now as we don't have auth context passed)
-    // In real app: const session = await auth(); const userId = session?.user?.id;
     const user = await prisma.user.findFirst();
     if (!user) {
         return { success: false, error: "User not found" };
     }
 
-    // 1. Create Feedback in DB (Pending Sync)
+    // Get the project to resolve GitHub repo dynamically
+    const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { githubRepoFullName: true },
+    });
+
+    // 1. Create Feedback in DB
     const feedback = await prisma.feedback.create({
         data: {
             title,
@@ -107,15 +109,15 @@ export async function createFeedback(data: FeedbackFormData) {
             source: "webapp",
             status: "OPEN",
             assigneeId: user.id,
-            agentPrompt: agentPrompt || null
+            agentPrompt: agentPrompt || null,
         },
     });
 
-    // 1.1 Create Task automatically (all feedback becomes a task)
+    // 1.1 Create Task automatically
     await prisma.task.create({
         data: {
             title: `[FEEDBACK] ${title}`,
-            description: description,
+            description,
             priority,
             projectId,
             feedbackId: feedback.id,
@@ -128,50 +130,27 @@ export async function createFeedback(data: FeedbackFormData) {
     let githubUrl: string | null = null;
     let warning: string | null = null;
 
-    // 2. Sync to GitHub
+    // 2. Sync to GitHub (dynamic repo)
     try {
-        const token = process.env.GITHUB_TOKEN;
-        const owner = process.env.GITHUB_USERNAME || "Blawness";
-        const repo = "feedback-hub"; // Should be dynamic based on project
+        if (project?.githubRepoFullName) {
+            const result = await createGitHubIssue(
+                project,
+                { ...feedback, githubIssueNumber: null },
+                user
+            );
 
-        if (token) {
-            const octokit = new Octokit({ auth: token });
+            if (result) {
+                githubIssueNumber = result.number;
+                githubUrl = result.url;
 
-            const bodyContent = `
-**Author:** ${user.name} (${user.email})
-**Type:** ${type}
-**Priority:** ${priority}
-**Feedback ID:** ${feedback.id}
-
-${description}
-
----
-*Created via Feedback Hub*
-        `;
-
-            const issue = await octokit.rest.issues.create({
-                owner,
-                repo,
-                title: `[${type.toUpperCase()}] ${title}`,
-                body: bodyContent,
-                labels: [type, priority, "feedback-hub"],
-            });
-
-            githubIssueNumber = issue.data.number;
-            githubUrl = issue.data.html_url;
-
-            // 3. Update DB on Success
-            await prisma.feedback.update({
-                where: { id: feedback.id },
-                data: {
-                    githubIssueNumber,
-                    githubUrl
-                } as any
-            });
+                await prisma.feedback.update({
+                    where: { id: feedback.id },
+                    data: { githubIssueNumber, githubUrl },
+                });
+            }
         } else {
-            warning = "GitHub token not configured. Saved locally only.";
+            warning = "Project not linked to a GitHub repo. Saved locally only.";
         }
-
     } catch (error) {
         console.error("GitHub Sync Error:", error);
         warning = "Failed to sync with GitHub. Saved locally.";
@@ -188,7 +167,7 @@ ${description}
                     aiSuggestedType: analysis.suggestedType,
                     aiSuggestedPriority: analysis.suggestedPriority,
                     aiConfidence: analysis.confidence,
-                    agentPrompt: analysis.suggestedAgentPrompt || feedback.agentPrompt
+                    agentPrompt: analysis.suggestedAgentPrompt || feedback.agentPrompt,
                 } as any,
             });
         }
@@ -203,7 +182,7 @@ ${description}
         feedbackId: feedback.id,
         githubIssueNumber,
         githubUrl,
-        warning
+        warning,
     };
 }
 
@@ -227,31 +206,19 @@ export async function updateFeedback(id: string, data: FeedbackFormData) {
             projectId,
             agentPrompt: agentPrompt || null,
         },
+        include: {
+            project: { select: { githubRepoFullName: true } },
+        },
     });
 
     let warning: string | null = null;
 
     // 2. Sync to GitHub
     try {
-        const token = process.env.GITHUB_TOKEN;
-        const owner = process.env.GITHUB_USERNAME || "Blawness";
-        const repo = "feedback-hub";
-
-        if (token) {
-            const octokit = new Octokit({ auth: token });
-            const issueTitle = `[${type.toUpperCase()}] ${title}`;
-
-            // Check if we have a githubIssueNumber
-            if ((feedback as any).githubIssueNumber) {
-                await octokit.rest.issues.update({
-                    owner,
-                    repo,
-                    issue_number: (feedback as any).githubIssueNumber,
-                    title: issueTitle,
-                    labels: [type, priority, "feedback-hub"],
-                });
-            }
-        }
+        await updateGitHubIssue(feedback.project, {
+            ...feedback,
+            githubIssueNumber: feedback.githubIssueNumber,
+        });
     } catch (error) {
         console.error("GitHub Update Error:", error);
         warning = "Updated locally. GitHub sync failed.";
@@ -262,15 +229,24 @@ export async function updateFeedback(id: string, data: FeedbackFormData) {
 }
 
 export async function deleteFeedback(id: string) {
-    // 1. Delete from DB
-    await prisma.feedback.delete({
+    // Fetch feedback with project info before deleting
+    const feedback = await prisma.feedback.findUnique({
         where: { id },
+        include: {
+            project: { select: { githubRepoFullName: true } },
+        },
     });
 
-    // 2. GitHub Sync?
-    // We generally don't delete issues on GH automatically to preserve history/context unless explicitly requested.
-    // We could close it?
-    // For now, doing nothing on GitHub side as agreed in plan.
+    // Close the GitHub issue if it exists
+    if (feedback?.githubIssueNumber && feedback.project.githubRepoFullName) {
+        try {
+            await closeGitHubIssue(feedback.project, feedback.githubIssueNumber);
+        } catch (error) {
+            console.error("GitHub close error (non-blocking):", error);
+        }
+    }
+
+    await prisma.feedback.delete({ where: { id } });
 
     revalidatePath("/feedback");
     return { success: true };
@@ -288,7 +264,10 @@ export async function updateFeedbackStatus(id: string, status: string) {
     const feedback = await prisma.feedback.update({
         where: { id },
         data: { status: status.toUpperCase() as any },
-        include: { tasks: true },
+        include: {
+            tasks: true,
+            project: { select: { githubRepoFullName: true } },
+        },
     });
 
     // Sync linked tasks
@@ -298,6 +277,19 @@ export async function updateFeedbackStatus(id: string, status: string) {
             where: { feedbackId: id },
             data: { status: taskStatus },
         });
+    }
+
+    // Sync GitHub issue state (open/closed)
+    if (feedback.githubIssueNumber) {
+        try {
+            await syncGitHubIssueState(
+                feedback.project,
+                feedback.githubIssueNumber,
+                status.toUpperCase()
+            );
+        } catch (error) {
+            console.error("GitHub status sync error (non-blocking):", error);
+        }
     }
 
     revalidatePath("/feedback");

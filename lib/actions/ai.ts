@@ -1,6 +1,6 @@
 "use server";
 
-import { ai, DEFAULT_MODEL, isAIEnabled } from "@/lib/ai/gemini";
+import { ai, isAIEnabled, getAiConfig } from "@/lib/ai/gemini";
 import { prisma } from "@/lib/prisma";
 import {
     feedbackAnalyzerPrompt,
@@ -25,9 +25,19 @@ async function generateJSON<T>(prompt: string): Promise<T | null> {
     if (!isAIEnabled() || !ai) return null;
 
     try {
+        const config = await getAiConfig();
+
         const response = await ai.models.generateContent({
-            model: DEFAULT_MODEL,
-            contents: prompt,
+            model: config.model,
+            contents: config.systemInstruction
+                ? `${config.systemInstruction}\n\n${prompt}`
+                : prompt,
+            config: {
+                temperature: config.temperature,
+                maxOutputTokens: config.maxOutputTokens,
+                topP: config.topP,
+                topK: config.topK,
+            },
         });
 
         const text = response.text?.trim();
@@ -46,9 +56,19 @@ async function generateText(prompt: string): Promise<string | null> {
     if (!isAIEnabled() || !ai) return null;
 
     try {
+        const config = await getAiConfig();
+
         const response = await ai.models.generateContent({
-            model: DEFAULT_MODEL,
-            contents: prompt,
+            model: config.model,
+            contents: config.systemInstruction
+                ? `${config.systemInstruction}\n\n${prompt}`
+                : prompt,
+            config: {
+                temperature: config.temperature,
+                maxOutputTokens: config.maxOutputTokens,
+                topP: config.topP,
+                topK: config.topK,
+            },
         });
 
         return response.text?.trim() || null;
@@ -222,6 +242,8 @@ export async function chatWithAssistant(
         return { error: "AI is not available." };
     }
 
+    const config = await getAiConfig();
+
     // Build project context
     const feedbacks = await prisma.feedback.findMany({
         where: projectId ? { projectId } : {},
@@ -256,7 +278,10 @@ Recent Tasks (${tasks.length}):
 ${tasks.map((t) => `- [${t.status}] [${t.priority}] ${t.title}`).join("\n")}
 `;
 
-    const systemPrompt = chatAssistantSystemPrompt(projectContext);
+    let systemPrompt = chatAssistantSystemPrompt(projectContext);
+    if (config.systemInstruction) {
+        systemPrompt = `${config.systemInstruction}\n\n${systemPrompt}`;
+    }
 
     try {
         const contents = [
@@ -270,8 +295,14 @@ ${tasks.map((t) => `- [${t.status}] [${t.priority}] ${t.title}`).join("\n")}
         ];
 
         const response = await ai.models.generateContent({
-            model: DEFAULT_MODEL,
+            model: config.model,
             contents,
+            config: {
+                temperature: config.temperature,
+                maxOutputTokens: config.maxOutputTokens,
+                topP: config.topP,
+                topK: config.topK,
+            },
         });
 
         return { success: true, reply: response.text?.trim() || "No response." };

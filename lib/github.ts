@@ -47,10 +47,10 @@ export async function syncGitHubRepos() {
                 },
                 update: {
                     name: repo.name,
-                    slug: repo.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), // Normalize slug
+                    slug: repo.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
                     description: repo.description,
                     url: repo.homepage || repo.html_url,
-                    // Don't update apiKey if exists
+                    githubRepoFullName: repo.full_name,
                 },
                 create: {
                     name: repo.name,
@@ -58,7 +58,8 @@ export async function syncGitHubRepos() {
                     description: repo.description,
                     url: repo.homepage || repo.html_url,
                     githubRepoId: repo.id,
-                    apiKey: `kp_${nanoid(24)}`, // Generate new API key
+                    githubRepoFullName: repo.full_name,
+                    apiKey: `kp_${nanoid(24)}`,
                 },
             });
             syncedProjects.push(project.name);

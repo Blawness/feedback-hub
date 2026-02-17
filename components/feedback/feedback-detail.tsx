@@ -22,6 +22,8 @@ import {
     User,
     FolderGit2,
     Sparkles,
+    Github,
+    ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -62,6 +64,8 @@ interface FeedbackDetailProps {
         aiSuggestedType?: string | null;
         aiSuggestedPriority?: string | null;
         aiConfidence?: number | null;
+        githubIssueNumber?: number | null;
+        githubUrl?: string | null;
     };
 }
 
@@ -210,6 +214,29 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
                                     {feedback.assignee?.name || "Unassigned"}
                                 </p>
                             </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* GitHub Issue Link */}
+                    <Card>
+                        <CardContent className="pt-6">
+                            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                <Github className="h-3 w-3" /> GitHub Issue
+                            </label>
+                            {feedback.githubIssueNumber && feedback.githubUrl ? (
+                                <a
+                                    href={feedback.githubUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-2 flex items-center gap-2 rounded-lg border p-3 text-sm font-medium hover:bg-muted transition-colors"
+                                >
+                                    <Github className="h-4 w-4" />
+                                    <span>Issue #{feedback.githubIssueNumber}</span>
+                                    <ExternalLink className="h-3 w-3 ml-auto text-muted-foreground" />
+                                </a>
+                            ) : (
+                                <p className="mt-1 text-sm text-muted-foreground">Not synced to GitHub</p>
+                            )}
                         </CardContent>
                     </Card>
 

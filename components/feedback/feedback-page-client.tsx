@@ -36,7 +36,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, ArrowLeft, ArrowRight, MoreHorizontal, Eye, Pencil, Trash2, MessageSquarePlus } from "lucide-react";
+import { Search, ArrowLeft, ArrowRight, MoreHorizontal, Eye, Pencil, Trash2, MessageSquarePlus, Github } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -61,6 +61,8 @@ interface FeedbackItem {
     metadata: any;
     projectId: string;
     assigneeId: string | null;
+    githubIssueNumber?: number | null;
+    githubUrl?: string | null;
 }
 
 interface Project {
@@ -244,8 +246,20 @@ export function FeedbackPageClient({
                                             >
                                                 {fb.title}
                                             </Link>
-                                            <div className="text-xs text-muted-foreground mt-0.5">
-                                                {fb._count.comments} comments · {fb._count.tasks} tasks
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                                <span>{fb._count.comments} comments · {fb._count.tasks} tasks</span>
+                                                {fb.githubIssueNumber && fb.githubUrl && (
+                                                    <a
+                                                        href={fb.githubUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <Github className="h-3 w-3" />
+                                                        #{fb.githubIssueNumber}
+                                                    </a>
+                                                )}
                                             </div>
                                         </TableCell>
                                         <TableCell className="px-4 py-3">
