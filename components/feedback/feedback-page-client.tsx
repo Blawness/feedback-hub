@@ -36,13 +36,14 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, ArrowLeft, ArrowRight, MoreHorizontal, Eye, Pencil, Trash2, MessageSquarePlus, Github } from "lucide-react";
+import { Search, ArrowLeft, ArrowRight, MoreHorizontal, Eye, Pencil, Trash2, MessageSquarePlus, Github, ClipboardList } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { useState } from "react";
 import { AISearch } from "@/components/feedback/ai-search";
 import { FeedbackDialog } from "@/components/feedback/feedback-dialog";
 import { deleteFeedback } from "@/lib/actions/feedback";
+import { createTaskFromFeedback } from "@/lib/actions/tasks";
 import { toast } from "sonner";
 
 interface FeedbackItem {
@@ -124,6 +125,15 @@ export function FeedbackPageClient({
             toast.error("Failed to delete feedback");
         }
         setDeletingFeedback(null);
+    }
+
+    async function handleCreateTask(feedbackId: string) {
+        try {
+            await createTaskFromFeedback(feedbackId);
+            toast.success("Task created and assigned successfully");
+        } catch {
+            toast.error("Failed to create task");
+        }
     }
 
     function updateFilter(key: string, value: string) {
@@ -286,37 +296,55 @@ export function FeedbackPageClient({
                                             {format(new Date(fb.createdAt), "MMM d, yyyy")}
                                         </TableCell>
                                         <TableCell className="px-4 py-3 text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 opacity-70 group-hover:opacity-100"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    >
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-[140px]">
-                                                    <DropdownMenuItem asChild>
-                                                        <Link href={`/feedback/${fb.id}`}>
-                                                            <Eye className="mr-2 h-4 w-4" />
-                                                            View
-                                                        </Link>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => setEditingFeedback(fb)}>
-                                                        <Pencil className="mr-2 h-4 w-4" />
-                                                        Edit
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => setDeletingFeedback(fb)}
-                                                        className="text-destructive focus:text-destructive"
-                                                    >
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                            <div className="flex items-center justify-end gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleCreateTask(fb.id);
+                                                    }}
+                                                    title="Assign to Task"
+                                                >
+                                                    <ClipboardList className="h-4 w-4" />
+                                                </Button>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 opacity-70 group-hover:opacity-100"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="w-[140px]">
+                                                        <DropdownMenuItem asChild>
+                                                            <Link href={`/feedback/${fb.id}`}>
+                                                                <Eye className="mr-2 h-4 w-4" />
+                                                                View
+                                                            </Link>
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => setEditingFeedback(fb)}>
+                                                            <Pencil className="mr-2 h-4 w-4" />
+                                                            Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => handleCreateTask(fb.id)}>
+                                                            <ClipboardList className="mr-2 h-4 w-4" />
+                                                            Assign Task
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            onClick={() => setDeletingFeedback(fb)}
+                                                            className="text-destructive focus:text-destructive"
+                                                        >
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}

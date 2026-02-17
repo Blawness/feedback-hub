@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
     try {
-        const apiKey = request.headers.get("X-API-Key");
+        const apiKey = request.headers.get("FEEDBACK_API_KEY");
         if (!apiKey) {
             return NextResponse.json(
                 { error: "Unauthorized. Missing API key." },
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
     try {
-        const apiKey = request.headers.get("X-API-Key");
+        const apiKey = request.headers.get("FEEDBACK_API_KEY");
         if (!apiKey) {
             return NextResponse.json(
                 { error: "Unauthorized. Missing API key." },

@@ -24,10 +24,13 @@ import {
     Sparkles,
     Github,
     ExternalLink,
+    ClipboardList,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { updateFeedbackStatus } from "@/lib/actions/feedback";
+import { createTaskFromFeedback } from "@/lib/actions/tasks";
+import { toast } from "sonner";
 import { AISuggestedReply } from "@/components/feedback/ai-suggested-reply";
 import { AIConvertTaskButton } from "@/components/feedback/ai-convert-task-button";
 import { AIBadge } from "@/components/ai/ai-badge";
@@ -76,6 +79,15 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
         startTransition(async () => {
             await updateFeedbackStatus(feedback.id, newStatus);
         });
+    }
+
+    async function handleCreateTask() {
+        try {
+            await createTaskFromFeedback(feedback.id);
+            toast.success("Task created successfully");
+        } catch (error) {
+            toast.error("Failed to create task");
+        }
     }
 
     return (
@@ -176,7 +188,7 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
                             <div>
                                 <label className="text-xs font-medium text-muted-foreground">Status</label>
                                 <Select
-                                    value={feedback.status}
+                                    value={feedback.status.toLowerCase()}
                                     onValueChange={handleStatusChange}
                                     disabled={isPending}
                                 >
@@ -239,6 +251,12 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
                             )}
                         </CardContent>
                     </Card>
+
+                    {/* Manual Task Creation */}
+                    <Button onClick={handleCreateTask} className="w-full gap-2" variant="outline">
+                        <ClipboardList className="h-4 w-4" />
+                        Assign to Task
+                    </Button>
 
                     {/* AI Convert to Task */}
                     <div className="flex">

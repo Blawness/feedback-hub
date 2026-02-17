@@ -89,3 +89,35 @@ export async function deleteTask(id: string) {
     await prisma.task.delete({ where: { id } });
     revalidatePath("/tasks");
 }
+
+export async function createTaskFromFeedback(feedbackId: string) {
+    const feedback = await prisma.feedback.findUnique({
+        where: { id: feedbackId },
+        select: {
+            title: true,
+            description: true,
+            priority: true,
+            projectId: true,
+        },
+    });
+
+    if (!feedback) {
+        throw new Error("Feedback not found");
+    }
+
+    const task = await prisma.task.create({
+        data: {
+            title: feedback.title,
+            description: feedback.description,
+            priority: feedback.priority,
+            projectId: feedback.projectId,
+            // Link to the feedback
+            feedbackId: feedbackId,
+            status: "todo",
+        },
+    });
+
+    revalidatePath("/feedback");
+    revalidatePath("/tasks");
+    return { success: true, task };
+}

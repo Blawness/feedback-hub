@@ -8,25 +8,29 @@ import {
     MessageSquare,
     CheckSquare,
     Settings,
-    LogOut
+    LogOut,
+    BookText
 } from "lucide-react";
 import { signOut } from "next-auth/react";
+import { Logo } from "@/components/ui/logo";
 
 const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Projects", href: "/projects", icon: FolderGit2 },
     { name: "Feedback", href: "/feedback", icon: MessageSquare },
     { name: "Tasks", href: "/tasks", icon: CheckSquare },
+    { name: "Projects", href: "/projects", icon: FolderGit2 },
     { name: "Settings", href: "/settings", icon: Settings },
+    { name: "Docs", href: "/docs", icon: BookText },
 ];
 
 export function Sidebar() {
     const pathname = usePathname();
 
     return (
-        <div className="flex flex-col w-64 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 min-h-screen">
-            <div className="p-6">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+        <div className="flex flex-col w-64 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 h-screen sticky top-0">
+            <div className="p-6 flex items-center gap-3">
+                <Logo />
+                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                     Feedback Hub
                 </h1>
             </div>
@@ -39,8 +43,8 @@ export function Sidebar() {
                             key={item.name}
                             href={item.href}
                             className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive
-                                    ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
-                                    : "text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-900"
+                                ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
+                                : "text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-900"
                                 }`}
                         >
                             <item.icon className="w-5 h-5" />

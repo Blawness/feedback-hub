@@ -293,6 +293,7 @@ export async function updateFeedbackStatus(id: string, status: string) {
     }
 
     revalidatePath("/feedback");
+    revalidatePath(`/feedback/${id}`);
 }
 
 export async function getFeedbackById(id: string) {

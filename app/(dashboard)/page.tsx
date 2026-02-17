@@ -11,9 +11,9 @@ async function DashboardContent() {
     return (
         <>
             <StatsCards
-                projectCount={stats.projectCount}
                 feedbackCount={stats.feedbackCount}
                 taskCount={stats.taskCount}
+                projectCount={stats.projectCount}
             />
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
@@ -25,9 +25,9 @@ async function DashboardContent() {
                     <div className="rounded-xl border bg-card text-card-foreground shadow p-6">
                         <h3 className="text-base font-semibold mb-4">Quick Actions</h3>
                         <div className="space-y-3 text-sm text-muted-foreground">
-                            <p>• Go to <a href="/projects" className="text-primary hover:underline font-medium">Projects</a> to sync GitHub repos</p>
                             <p>• Go to <a href="/feedback" className="text-primary hover:underline font-medium">Feedback</a> to view all reports</p>
                             <p>• Go to <a href="/tasks" className="text-primary hover:underline font-medium">Tasks</a> to manage your kanban board</p>
+                            <p>• Go to <a href="/projects" className="text-primary hover:underline font-medium">Projects</a> to sync GitHub repos</p>
                             <p>• Go to <a href="/settings" className="text-primary hover:underline font-medium">Settings</a> to view API docs</p>
                         </div>
                     </div>

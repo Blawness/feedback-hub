@@ -6,7 +6,7 @@ export async function PATCH(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const apiKey = request.headers.get("X-API-Key");
+        const apiKey = request.headers.get("FEEDBACK_API_KEY");
         if (!apiKey) {
             return NextResponse.json(
                 { error: "Unauthorized. Missing API key." },

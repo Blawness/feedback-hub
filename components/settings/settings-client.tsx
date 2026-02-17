@@ -77,9 +77,9 @@ export function SettingsClient() {
                         <div className="rounded-lg bg-muted p-4">
                             <p className="text-xs font-medium text-muted-foreground mb-2">Example Request</p>
                             <pre className="text-xs overflow-auto whitespace-pre-wrap">
-                                {`POST /api/v1/feedback
+                                {`POST https://feedback-hub-seven.vercel.app/api/v1/feedback
 Content-Type: application/json
-X-API-Key: <your-project-api-key>
+FEEDBACK_API_KEY: <your-project-api-key>
 
 {
   "title": "Bug report",

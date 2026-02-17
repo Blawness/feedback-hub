@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 async function getProjectByApiKey(request: Request) {
-    const apiKey = request.headers.get("X-API-Key");
+    const apiKey = request.headers.get("FEEDBACK_API_KEY");
     if (!apiKey) return null;
 
     const project = await prisma.project.findUnique({
