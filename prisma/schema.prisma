@@ -45,7 +45,7 @@ model Project {
 
 enum FeedbackStatus {
   OPEN
-  IN_PROGRESS
+  ASSIGNED
   RESOLVED
   CLOSED
 }

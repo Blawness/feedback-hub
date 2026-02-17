@@ -33,7 +33,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Clock, FolderGit2 } from "lucide-react";
+import { Trash2, Clock, FolderGit2, Bug, Lightbulb, TrendingUp, HelpCircle } from "lucide-react";
 import { updateTaskStatus, deleteTask } from "@/lib/actions/tasks";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -55,7 +55,7 @@ interface Task {
     createdAt: Date;
     project: { id: string; name: string };
     assignee: { id: string; name: string } | null;
-    feedback: { id: string; title: string } | null;
+    feedback: { id: string; title: string; type: string } | null;
 }
 
 interface Project {
@@ -68,6 +68,29 @@ const PRIORITY_DOT: Record<string, string> = {
     medium: "bg-yellow-500",
     high: "bg-orange-500",
     critical: "bg-red-500",
+};
+
+const FEEDBACK_TYPE_CONFIG: Record<string, { icon: any; color: string; bg: string }> = {
+    bug: {
+        icon: Bug,
+        color: "text-red-600 dark:text-red-400",
+        bg: "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"
+    },
+    feature: {
+        icon: Lightbulb,
+        color: "text-blue-600 dark:text-blue-400",
+        bg: "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800"
+    },
+    improvement: {
+        icon: TrendingUp,
+        color: "text-purple-600 dark:text-purple-400",
+        bg: "bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800"
+    },
+    question: {
+        icon: HelpCircle,
+        color: "text-amber-600 dark:text-amber-400",
+        bg: "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+    },
 };
 
 export function TaskBoard({ tasks: initialTasks, projects }: { tasks: Task[]; projects: Project[] }) {
@@ -420,6 +443,16 @@ function TaskCard({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground select-none">
+                    {task.feedback && FEEDBACK_TYPE_CONFIG[task.feedback.type] && (() => {
+                        const config = FEEDBACK_TYPE_CONFIG[task.feedback.type];
+                        const Icon = config.icon;
+                        return (
+                            <span className={`flex items-center gap-1 px-2 py-1 rounded border font-medium ${config.color} ${config.bg}`}>
+                                <Icon className="h-3.5 w-3.5" />
+                                <span className="capitalize">{task.feedback.type}</span>
+                            </span>
+                        );
+                    })()}
                     <span className="flex items-center gap-1 bg-secondary/50 px-1.5 py-0.5 rounded">
                         <FolderGit2 className="h-3 w-3" />
                         {task.project.name}

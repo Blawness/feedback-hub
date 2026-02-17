@@ -27,7 +27,7 @@ export async function getTasks({
         include: {
             project: { select: { id: true, name: true } },
             assignee: { select: { id: true, name: true } },
-            feedback: { select: { id: true, title: true } },
+            feedback: { select: { id: true, title: true, type: true } },
         },
     });
 
@@ -59,28 +59,12 @@ export async function createTask(formData: FormData) {
     return { success: true };
 }
 
-// Define the mapping from Task status (string) to FeedbackStatus (enum-like string)
-const FEEDBACK_STATUS_MAP: Record<string, "OPEN" | "IN_PROGRESS" | "RESOLVED"> = {
-    todo: "OPEN",
-    in_progress: "IN_PROGRESS",
-    review: "IN_PROGRESS",
-    done: "RESOLVED",
-};
 
 export async function updateTaskStatus(id: string, status: string) {
-    const task = await prisma.task.update({
+    await prisma.task.update({
         where: { id },
         data: { status },
-        include: { feedback: true },
     });
-
-    // Sync feedback status if linked
-    if (task.feedbackId && FEEDBACK_STATUS_MAP[status]) {
-        await prisma.feedback.update({
-            where: { id: task.feedbackId },
-            data: { status: FEEDBACK_STATUS_MAP[status] },
-        });
-    }
 
     revalidatePath("/tasks");
 }
@@ -115,6 +99,12 @@ export async function createTaskFromFeedback(feedbackId: string) {
             feedbackId: feedbackId,
             status: "todo",
         },
+    });
+
+    // Update feedback status to ASSIGNED
+    await prisma.feedback.update({
+        where: { id: feedbackId },
+        data: { status: "ASSIGNED" },
     });
 
     revalidatePath("/feedback");

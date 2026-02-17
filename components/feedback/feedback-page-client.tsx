@@ -74,12 +74,12 @@ interface Project {
 
 const STATUS_COLORS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     OPEN: "destructive",
-    IN_PROGRESS: "default",
+    ASSIGNED: "default",
     RESOLVED: "secondary",
     CLOSED: "outline",
     // Add lowercase mappings just in case
     open: "destructive",
-    in_progress: "default",
+    assigned: "default",
     resolved: "secondary",
     closed: "outline",
 };
@@ -188,7 +188,7 @@ export function FeedbackPageClient({
                             <SelectContent>
                                 <SelectItem value="all">All Status</SelectItem>
                                 <SelectItem value="open">Open</SelectItem>
-                                <SelectItem value="in_progress">In Progress</SelectItem>
+                                <SelectItem value="assigned">Assigned</SelectItem>
                                 <SelectItem value="resolved">Resolved</SelectItem>
                                 <SelectItem value="closed">Closed</SelectItem>
                             </SelectContent>
@@ -300,15 +300,16 @@ export function FeedbackPageClient({
                                                 {fb._count.tasks === 0 && (
                                                     <Button
                                                         variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0"
+                                                        size="sm"
+                                                        className="h-9 px-3 gap-2 text-xs font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 hover:from-blue-500/20 hover:to-purple-500/20 border border-blue-500/20 hover:border-blue-500/40"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             handleCreateTask(fb.id);
                                                         }}
                                                         title="Assign to Task"
                                                     >
-                                                        <ClipboardList className="h-4 w-4" />
+                                                        <ClipboardList className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                                        <span className="text-blue-700 dark:text-blue-300">Assign</span>
                                                     </Button>
                                                 )}
                                                 <DropdownMenu>

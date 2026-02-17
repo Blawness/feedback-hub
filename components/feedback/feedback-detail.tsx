@@ -197,7 +197,7 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="open">Open</SelectItem>
-                                        <SelectItem value="in_progress">In Progress</SelectItem>
+                                        <SelectItem value="assigned">Assigned</SelectItem>
                                         <SelectItem value="resolved">Resolved</SelectItem>
                                         <SelectItem value="closed">Closed</SelectItem>
                                     </SelectContent>

@@ -113,19 +113,6 @@ export async function createFeedback(data: FeedbackFormData) {
         },
     });
 
-    // 1.1 Create Task automatically
-    await prisma.task.create({
-        data: {
-            title: `[FEEDBACK] ${title}`,
-            description,
-            priority,
-            projectId,
-            feedbackId: feedback.id,
-            status: "todo",
-            assigneeId: user.id,
-        },
-    });
-
     let githubIssueNumber: number | null = null;
     let githubUrl: string | null = null;
     let warning: string | null = null;
@@ -252,32 +239,15 @@ export async function deleteFeedback(id: string) {
     return { success: true };
 }
 
-// Define optional mapping from FeedbackStatus (string) to Task status (string)
-const TASK_STATUS_MAP: Record<string, string> = {
-    OPEN: "todo",
-    IN_PROGRESS: "in_progress",
-    RESOLVED: "done",
-    CLOSED: "done",
-};
 
 export async function updateFeedbackStatus(id: string, status: string) {
     const feedback = await prisma.feedback.update({
         where: { id },
         data: { status: status.toUpperCase() as any },
         include: {
-            tasks: true,
             project: { select: { githubRepoFullName: true } },
         },
     });
-
-    // Sync linked tasks
-    const taskStatus = TASK_STATUS_MAP[status.toUpperCase()];
-    if (taskStatus && feedback.tasks.length > 0) {
-        await prisma.task.updateMany({
-            where: { feedbackId: id },
-            data: { status: taskStatus },
-        });
-    }
 
     // Sync GitHub issue state (open/closed)
     if (feedback.githubIssueNumber) {
