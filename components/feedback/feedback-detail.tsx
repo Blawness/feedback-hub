@@ -199,7 +199,7 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
                                         <SelectItem value="open">Open</SelectItem>
                                         <SelectItem value="assigned">Assigned</SelectItem>
                                         <SelectItem value="resolved">Resolved</SelectItem>
-                                        <SelectItem value="closed">Closed</SelectItem>
+                                        <SelectItem value="closed" disabled={feedback.status === "ASSIGNED"}>Closed</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

@@ -394,7 +394,7 @@ export function FeedbackPageClient({
                                                         <span className="text-blue-700 dark:text-blue-300">Assign</span>
                                                     </Button>
                                                 )}
-                                                {fb.status !== "CLOSED" && (
+                                                {fb.status !== "CLOSED" && fb.status !== "ASSIGNED" && (
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"

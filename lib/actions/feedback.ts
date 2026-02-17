@@ -245,6 +245,15 @@ export async function deleteFeedback(id: string) {
 
 
 export async function updateFeedbackStatus(id: string, status: string) {
+    const feedbackData = await prisma.feedback.findUnique({
+        where: { id },
+        select: { status: true },
+    });
+
+    if ((feedbackData?.status as string) === "ASSIGNED" && status.toUpperCase() === "CLOSED") {
+        throw new Error("Cannot close feedback that is already assigned to a task.");
+    }
+
     const feedback = await prisma.feedback.update({
         where: { id },
         data: { status: status.toUpperCase() as any },
