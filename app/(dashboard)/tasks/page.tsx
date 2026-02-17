@@ -5,6 +5,8 @@ import { Metadata } from "next";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
     title: "Tasks - Feedback Hub",
     description: "Manage tasks across your projects.",

@@ -70,8 +70,17 @@ export async function updateTaskStatus(id: string, status: string) {
 }
 
 export async function deleteTask(id: string) {
-    await prisma.task.delete({ where: { id } });
-    revalidatePath("/tasks");
+    try {
+        await prisma.task.delete({ where: { id } });
+        revalidatePath("/tasks");
+    } catch (error: any) {
+        if (error.code === "P2025") {
+            // Task already deleted, just revalidate to update UI
+            revalidatePath("/tasks");
+            return;
+        }
+        throw error;
+    }
 }
 
 export async function createTaskFromFeedback(feedbackId: string) {
