@@ -116,22 +116,7 @@ export function FeedbackForm({ projects, initialData, onSuccess }: FeedbackFormP
         }
     }, [form, lastAnalyzedContent]);
 
-    // Debounced Auto-Analysis for "Real-time" feel
-    useEffect(() => {
-        let timer: NodeJS.Timeout;
-        const subscription = form.watch((value, { name }) => {
-            if (name === 'description' || name === 'title') {
-                clearTimeout(timer);
-                timer = setTimeout(() => {
-                    handleAIAnalysis(true);
-                }, 2000);
-            }
-        });
-        return () => {
-            subscription.unsubscribe();
-            clearTimeout(timer);
-        };
-    }, [form, handleAIAnalysis]);
+
 
     function onSubmit(data: FeedbackFormValues) {
         startTransition(async () => {

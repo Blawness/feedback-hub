@@ -69,7 +69,7 @@ export async function addComment(data: { feedbackId: string; content: string }) 
             content,
             userId: user.id,
             feedbackId,
-            githubCommentId,
+            githubCommentId: githubCommentId ? BigInt(githubCommentId) : null,
             isFromGitHub: false,
         },
         include: {
@@ -77,11 +77,17 @@ export async function addComment(data: { feedbackId: string; content: string }) 
         },
     });
 
+    // Serialize BigInt for client
+    const serializedComment = {
+        ...comment,
+        githubCommentId: comment.githubCommentId?.toString() ?? null,
+    };
+
     revalidatePath(`/feedback/${feedbackId}`);
 
     return {
         success: true,
-        comment,
+        comment: serializedComment,
         warning,
     };
 }
@@ -121,7 +127,7 @@ export async function syncGitHubComments(feedbackId: string) {
         // Filter out comments we already have and comments from feedback-hub (avoid loops)
         const newComments = githubComments.filter(
             (gc) =>
-                !existingIds.has(gc.id) &&
+                !existingIds.has(BigInt(gc.id)) &&
                 !gc.body.includes("commented via Feedback Hub")
         );
 
@@ -145,7 +151,7 @@ export async function syncGitHubComments(feedbackId: string) {
                     content,
                     userId: systemUser.id,
                     feedbackId,
-                    githubCommentId: gc.id,
+                    githubCommentId: BigInt(gc.id),
                     isFromGitHub: true,
                 },
             });

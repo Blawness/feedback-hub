@@ -45,7 +45,16 @@ async function generateJSON<T>(prompt: string): Promise<T | null> {
 
         // Strip markdown fences if present
         const cleaned = text.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/i, "").trim();
-        return JSON.parse(cleaned) as T;
+        const parsed = JSON.parse(cleaned) as T;
+
+        console.log("--- AI JSON Request ---");
+        console.log("Prompt:", prompt);
+        console.log("System Instruction:", config.systemInstruction);
+        console.log("--- AI JSON Response ---");
+        console.log(JSON.stringify(parsed, null, 2));
+        console.log("-----------------------");
+
+        return parsed;
     } catch (error) {
         console.error("AI generation failed:", error);
         return null;
@@ -71,7 +80,16 @@ async function generateText(prompt: string): Promise<string | null> {
             },
         });
 
-        return response.text?.trim() || null;
+        const result = response.text?.trim() || null;
+
+        console.log("--- AI Text Request ---");
+        console.log("Prompt:", prompt);
+        console.log("System Instruction:", config.systemInstruction);
+        console.log("--- AI Text Response ---");
+        console.log(result);
+        console.log("-----------------------");
+
+        return result;
     } catch (error) {
         console.error("AI generation failed:", error);
         return null;

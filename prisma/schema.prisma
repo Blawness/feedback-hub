@@ -1,6 +1,6 @@
 datasource db {
   provider = "postgresql"
-  url = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -24,17 +24,17 @@ model User {
 }
 
 model Project {
-  id           String   @id @default(cuid())
-  name         String
-  slug         String   @unique
-  description  String?
-  url          String?  // homepage or repo URL
+  id                 String   @id @default(cuid())
+  name               String
+  slug               String   @unique
+  description        String?
+  url                String? // homepage or repo URL
   githubRepoId       Int?     @unique // GitHub repo ID for sync
-  githubRepoFullName String?  // e.g., "Blawness/feedback-hub"
-  apiKey       String   @unique
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  githubRepoFullName String? // e.g., "Blawness/feedback-hub"
+  apiKey             String   @unique
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   feedbacks Feedback[]
   tasks     Task[]
@@ -54,26 +54,26 @@ model Feedback {
   id          String         @id @default(cuid())
   title       String
   description String
-  type        String         // bug, feature, improvement, question
+  type        String // bug, feature, improvement, question
   priority    String         @default("medium")
   status      FeedbackStatus @default(OPEN)
   source      String         @default("api") // api, manual, widget
-  metadata    Json?          // browser, OS, screenshot URL, etc.
-  
+  metadata    Json? // browser, OS, screenshot URL, etc.
+
   githubIssueNumber Int?
   githubUrl         String?
 
   // AI-generated fields
   aiSummary           String?
-  aiSuggestedType     String?  // AI's suggested type classification
-  aiSuggestedPriority String?  // AI's suggested priority
-  aiConfidence        Float?   // AI confidence score 0-1
-  agentPrompt         String?  @db.Text
+  aiSuggestedType     String? // AI's suggested type classification
+  aiSuggestedPriority String? // AI's suggested priority
+  aiConfidence        Float? // AI confidence score 0-1
+  agentPrompt         String? @db.Text
 
   projectId  String
-  project    Project  @relation(fields: [projectId], references: [id])
+  project    Project @relation(fields: [projectId], references: [id])
   assigneeId String?
-  assignee   User?    @relation(fields: [assigneeId], references: [id])
+  assignee   User?   @relation(fields: [assigneeId], references: [id])
 
   comments Comment[]
   tasks    Task[]
@@ -114,7 +114,7 @@ model Comment {
   id      String @id @default(cuid())
   content String
 
-  githubCommentId Int?    @unique // GitHub comment ID for sync
+  githubCommentId BigInt? @unique // GitHub comment ID for sync
   isFromGitHub    Boolean @default(false) // true if comment originated from GitHub
 
   userId     String
