@@ -125,10 +125,10 @@ export async function convertFeedbackToTask(feedbackId: string) {
         },
     });
 
-    // Update feedback status to IN_PROGRESS
+    // Update feedback status to ASSIGNED
     await prisma.feedback.update({
         where: { id: feedbackId },
-        data: { status: "IN_PROGRESS" },
+        data: { status: "ASSIGNED" },
     });
 
     revalidatePath("/tasks");
