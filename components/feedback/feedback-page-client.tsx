@@ -297,18 +297,20 @@ export function FeedbackPageClient({
                                         </TableCell>
                                         <TableCell className="px-4 py-3 text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleCreateTask(fb.id);
-                                                    }}
-                                                    title="Assign to Task"
-                                                >
-                                                    <ClipboardList className="h-4 w-4" />
-                                                </Button>
+                                                {fb._count.tasks === 0 && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleCreateTask(fb.id);
+                                                        }}
+                                                        title="Assign to Task"
+                                                    >
+                                                        <ClipboardList className="h-4 w-4" />
+                                                    </Button>
+                                                )}
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
                                                         <Button
@@ -331,10 +333,12 @@ export function FeedbackPageClient({
                                                             <Pencil className="mr-2 h-4 w-4" />
                                                             Edit
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleCreateTask(fb.id)}>
-                                                            <ClipboardList className="mr-2 h-4 w-4" />
-                                                            Assign Task
-                                                        </DropdownMenuItem>
+                                                        {fb._count.tasks === 0 && (
+                                                            <DropdownMenuItem onClick={() => handleCreateTask(fb.id)}>
+                                                                <ClipboardList className="mr-2 h-4 w-4" />
+                                                                Assign Task
+                                                            </DropdownMenuItem>
+                                                        )}
                                                         <DropdownMenuItem
                                                             onClick={() => setDeletingFeedback(fb)}
                                                             className="text-destructive focus:text-destructive"
