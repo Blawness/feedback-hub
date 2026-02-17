@@ -1,12 +1,11 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useState, useEffect, useCallback, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -64,44 +63,66 @@ export function FeedbackForm({ projects, initialData, onSuccess }: FeedbackFormP
         },
     });
 
-    async function handleAIAnalysis() {
+    const [lastAnalyzedContent, setLastAnalyzedContent] = useState('');
+
+    const handleAIAnalysis = useCallback(async (silent = false) => {
         const description = form.getValues('description');
         const title = form.getValues('title');
 
-        if (!description || description.length < 10) {
-            toast.error('Please provide a more detailed description first (min 10 chars).');
+        if (!description || description.length < 15) {
+            if (!silent) toast.error('Please provide a more detailed description first (min 15 chars).');
             return;
         }
+
+        // Avoid re-analyzing the same content
+        const currentContent = `${title}|${description}`;
+        if (silent && currentContent === lastAnalyzedContent) return;
 
         setIsAnalyzing(true);
         try {
             const result = await analyzeFeedback(title, description);
             if (result) {
+                setLastAnalyzedContent(currentContent);
                 if (result.suggestedTitle) {
-                    form.setValue('title', result.suggestedTitle);
+                    form.setValue('title', result.suggestedTitle, { shouldDirty: true });
                 }
                 if (result.suggestedDescription) {
-                    form.setValue('description', result.suggestedDescription);
+                    form.setValue('description', result.suggestedDescription, { shouldDirty: true });
                 }
                 if (result.suggestedAgentPrompt) {
-                    form.setValue('agentPrompt', result.suggestedAgentPrompt);
+                    form.setValue('agentPrompt', result.suggestedAgentPrompt, { shouldDirty: true });
                 }
-                form.setValue('type', result.suggestedType);
-                form.setValue('priority', result.suggestedPriority);
+                form.setValue('type', result.suggestedType as any, { shouldDirty: true });
+                form.setValue('priority', result.suggestedPriority as any, { shouldDirty: true });
 
-                toast.success('Feedback enhanced with AI!', {
-                    description: `Confidence: ${Math.round(result.confidence * 100)}%`,
-                });
-            } else {
+                if (!silent) {
+                    toast.success('Feedback enhanced with AI!', {
+                        description: `Confidence: ${Math.round(result.confidence * 100)}%`,
+                    });
+                }
+            } else if (!silent) {
                 toast.error('AI is currently unavailable.');
             }
         } catch (error) {
-            toast.error('Failed to analyze feedback.');
+            if (!silent) toast.error('Failed to analyze feedback.');
             console.error(error);
         } finally {
             setIsAnalyzing(false);
         }
-    }
+    }, [form, lastAnalyzedContent]);
+
+    // Debounced Auto-Analysis for "Real-time" feel
+    useEffect(() => {
+        const subscription = form.watch((value, { name }) => {
+            if (name === 'description' || name === 'title') {
+                const timer = setTimeout(() => {
+                    handleAIAnalysis(true);
+                }, 2000);
+                return () => clearTimeout(timer);
+            }
+        });
+        return () => subscription.unsubscribe();
+    }, [form, handleAIAnalysis]);
 
     function onSubmit(data: FeedbackFormValues) {
         startTransition(async () => {
@@ -149,7 +170,7 @@ export function FeedbackForm({ projects, initialData, onSuccess }: FeedbackFormP
                             <FormLabel>Project</FormLabel>
                             <Select
                                 onValueChange={field.onChange}
-                                defaultValue={field.value}
+                                value={field.value}
                             >
                                 <FormControl>
                                     <SelectTrigger>
@@ -192,7 +213,7 @@ export function FeedbackForm({ projects, initialData, onSuccess }: FeedbackFormP
                                 <FormLabel>Type</FormLabel>
                                 <Select
                                     onValueChange={field.onChange}
-                                    defaultValue={field.value}
+                                    value={field.value}
                                 >
                                     <FormControl>
                                         <SelectTrigger>
@@ -219,7 +240,7 @@ export function FeedbackForm({ projects, initialData, onSuccess }: FeedbackFormP
                                 <FormLabel>Priority</FormLabel>
                                 <Select
                                     onValueChange={field.onChange}
-                                    defaultValue={field.value}
+                                    value={field.value}
                                 >
                                     <FormControl>
                                         <SelectTrigger>
@@ -251,7 +272,7 @@ export function FeedbackForm({ projects, initialData, onSuccess }: FeedbackFormP
                                     variant="ghost"
                                     size="sm"
                                     className="h-7 px-2 text-xs gap-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                    onClick={handleAIAnalysis}
+                                    onClick={() => handleAIAnalysis(false)}
                                     disabled={isAnalyzing || isPending}
                                 >
                                     {isAnalyzing ? (

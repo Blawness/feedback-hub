@@ -23,8 +23,18 @@ async function FeedbackContent({
     const priority = typeof params.priority === "string" ? params.priority : undefined;
     const search = typeof params.search === "string" ? params.search : undefined;
     const page = typeof params.page === "string" ? parseInt(params.page) : 1;
+    const sortBy = typeof params.sortBy === "string" ? params.sortBy : "createdAt";
+    const sortOrder = params.sortOrder === "asc" ? "asc" : "desc";
 
-    const { feedbacks, total } = await getFeedbacks({ status, projectId, priority, search, page });
+    const { feedbacks, total } = await getFeedbacks({
+        status,
+        projectId,
+        priority,
+        search,
+        page,
+        sortBy,
+        sortOrder
+    });
 
     return (
         <FeedbackPageClient
@@ -32,7 +42,7 @@ async function FeedbackContent({
             projects={projects}
             total={total}
             currentPage={page}
-            filters={{ status, projectId, priority, search }}
+            filters={{ status, projectId, priority, search, sortBy, sortOrder }}
         />
     );
 }

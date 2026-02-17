@@ -38,6 +38,8 @@ export async function getFeedbacks({
     search,
     page = 1,
     limit = 20,
+    sortBy = "createdAt",
+    sortOrder = "desc",
 }: {
     projectId?: string;
     status?: string;
@@ -45,6 +47,8 @@ export async function getFeedbacks({
     search?: string;
     page?: number;
     limit?: number;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
 }) {
     const where: Prisma.FeedbackWhereInput = {
         ...(projectId ? { projectId } : {}),
@@ -63,7 +67,7 @@ export async function getFeedbacks({
     const [feedbacks, total] = await Promise.all([
         prisma.feedback.findMany({
             where,
-            orderBy: { createdAt: "desc" },
+            orderBy: { [sortBy]: sortOrder },
             skip: (page - 1) * limit,
             take: limit,
             include: {
@@ -261,6 +265,23 @@ export async function updateFeedbackStatus(id: string, status: string) {
             console.error("GitHub status sync error (non-blocking):", error);
         }
     }
+
+    revalidatePath("/feedback");
+    revalidatePath(`/feedback/${id}`);
+}
+
+export async function updateFeedbackPriority(id: string, priority: string) {
+    const feedback = await prisma.feedback.update({
+        where: { id },
+        data: { priority },
+        include: {
+            project: { select: { githubRepoFullName: true } },
+        },
+    });
+
+    // Sync GitHub issue priority/labels if needed
+    // (Existing GitHub sync for priority is handled in updateGitHubIssue, 
+    // but here we just update labels if we had a mapping)
 
     revalidatePath("/feedback");
     revalidatePath(`/feedback/${id}`);

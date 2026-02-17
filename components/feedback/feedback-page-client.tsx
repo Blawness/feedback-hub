@@ -36,13 +36,14 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, ArrowLeft, ArrowRight, MoreHorizontal, Eye, Pencil, Trash2, MessageSquarePlus, Github, ClipboardList } from "lucide-react";
+import { Search, ArrowLeft, ArrowRight, MoreHorizontal, Eye, Pencil, Trash2, MessageSquarePlus, Github, ClipboardList, ArrowUpDown, ChevronUp, ChevronDown, XCircle } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { AISearch } from "@/components/feedback/ai-search";
 import { FeedbackDialog } from "@/components/feedback/feedback-dialog";
-import { deleteFeedback } from "@/lib/actions/feedback";
+import { deleteFeedback, updateFeedbackStatus, updateFeedbackPriority } from "@/lib/actions/feedback";
 import { createTaskFromFeedback } from "@/lib/actions/tasks";
 import { toast } from "sonner";
 
@@ -107,6 +108,8 @@ export function FeedbackPageClient({
         projectId?: string;
         priority?: string;
         search?: string;
+        sortBy?: string;
+        sortOrder?: "asc" | "desc";
     };
 }) {
     const router = useRouter();
@@ -133,6 +136,37 @@ export function FeedbackPageClient({
             toast.success("Task created and assigned successfully");
         } catch {
             toast.error("Failed to create task");
+        }
+    }
+
+    async function handleStatusUpdate(id: string, status: string) {
+        try {
+            await updateFeedbackStatus(id, status);
+            toast.success(`Status updated to ${status}`);
+        } catch {
+            toast.error("Failed to update status");
+        }
+    }
+    function toggleSort(field: string) {
+        const newParams = new URLSearchParams(params.toString());
+        const currentSortBy = params.get("sortBy") || "createdAt";
+        const currentSortOrder = params.get("sortOrder") || "desc";
+
+        if (currentSortBy === field) {
+            newParams.set("sortOrder", currentSortOrder === "asc" ? "desc" : "asc");
+        } else {
+            newParams.set("sortBy", field);
+            newParams.set("sortOrder", "asc");
+        }
+        router.push(`/feedback?${newParams.toString()}`);
+    }
+
+    async function handlePriorityUpdate(id: string, priority: string) {
+        try {
+            await updateFeedbackPriority(id, priority);
+            toast.success(`Priority updated to ${priority}`);
+        } catch {
+            toast.error("Failed to update priority");
         }
     }
 
@@ -237,12 +271,48 @@ export function FeedbackPageClient({
                         <Table>
                             <TableHeader>
                                 <TableRow className="border-b bg-muted/30 hover:bg-muted/30">
-                                    <TableHead className="px-4 py-3 font-semibold">Title</TableHead>
+                                    <TableHead className="px-4 py-3 font-semibold">
+                                        <button
+                                            onClick={() => toggleSort("title")}
+                                            className="flex items-center gap-1 hover:text-foreground transition-colors group/sort"
+                                        >
+                                            Title
+                                            {filters.sortBy === "title" ? (
+                                                filters.sortOrder === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                                            ) : (
+                                                <ArrowUpDown className="h-3 w-3 opacity-0 group-hover/sort:opacity-50" />
+                                            )}
+                                        </button>
+                                    </TableHead>
                                     <TableHead className="px-4 py-3 font-semibold">Project</TableHead>
                                     <TableHead className="px-4 py-3 font-semibold">Type</TableHead>
-                                    <TableHead className="px-4 py-3 font-semibold">Status</TableHead>
-                                    <TableHead className="px-4 py-3 font-semibold">Priority</TableHead>
-                                    <TableHead className="px-4 py-3 font-semibold">Date</TableHead>
+                                    <TableHead className="px-4 py-3 font-semibold text-center">Status</TableHead>
+                                    <TableHead className="px-4 py-3 font-semibold">
+                                        <button
+                                            onClick={() => toggleSort("priority")}
+                                            className="flex items-center gap-1 hover:text-foreground transition-colors group/sort"
+                                        >
+                                            Priority
+                                            {filters.sortBy === "priority" ? (
+                                                filters.sortOrder === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                                            ) : (
+                                                <ArrowUpDown className="h-3 w-3 opacity-0 group-hover/sort:opacity-50" />
+                                            )}
+                                        </button>
+                                    </TableHead>
+                                    <TableHead className="px-4 py-3 font-semibold">
+                                        <button
+                                            onClick={() => toggleSort("createdAt")}
+                                            className="flex items-center gap-1 hover:text-foreground transition-colors group/sort"
+                                        >
+                                            Date
+                                            {filters.sortBy === "createdAt" ? (
+                                                filters.sortOrder === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                                            ) : (
+                                                <ArrowUpDown className="h-3 w-3 opacity-0 group-hover/sort:opacity-50" />
+                                            )}
+                                        </button>
+                                    </TableHead>
                                     <TableHead className="px-4 py-3 font-semibold text-right w-[80px]">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -280,24 +350,36 @@ export function FeedbackPageClient({
                                         <TableCell className="px-4 py-3 capitalize text-muted-foreground">
                                             {fb.type}
                                         </TableCell>
-                                        <TableCell className="px-4 py-3">
+                                        <TableCell className="px-4 py-3 text-center">
                                             <Badge variant={STATUS_COLORS[fb.status] || "outline"} className="capitalize">
                                                 {fb.status.replace("_", " ")}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="px-4 py-3">
-                                            <span
-                                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${PRIORITY_COLORS[fb.priority] || "bg-muted text-muted-foreground"}`}
+                                            <Select
+                                                defaultValue={fb.priority}
+                                                onValueChange={(value) => handlePriorityUpdate(fb.id, value)}
                                             >
-                                                {fb.priority}
-                                            </span>
+                                                <SelectTrigger className={cn(
+                                                    "h-7 w-[100px] text-xs font-medium border-none shadow-none focus:ring-0 capitalize px-2",
+                                                    PRIORITY_COLORS[fb.priority]
+                                                )}>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="low">Low</SelectItem>
+                                                    <SelectItem value="medium">Medium</SelectItem>
+                                                    <SelectItem value="high">High</SelectItem>
+                                                    <SelectItem value="critical">Critical</SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </TableCell>
                                         <TableCell className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
                                             {format(new Date(fb.createdAt), "MMM d, yyyy")}
                                         </TableCell>
                                         <TableCell className="px-4 py-3 text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                {fb._count.tasks === 0 && (
+                                                {fb._count.tasks === 0 && fb.status !== "CLOSED" && (
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
@@ -310,6 +392,21 @@ export function FeedbackPageClient({
                                                     >
                                                         <ClipboardList className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                                                         <span className="text-blue-700 dark:text-blue-300">Assign</span>
+                                                    </Button>
+                                                )}
+                                                {fb.status !== "CLOSED" && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-9 px-3 gap-2 text-xs font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0 bg-red-500/5 hover:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/10 hover:border-red-500/30"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleStatusUpdate(fb.id, "closed");
+                                                        }}
+                                                        title="Reject / Close"
+                                                    >
+                                                        <XCircle className="h-4 w-4" />
+                                                        <span>Reject</span>
                                                     </Button>
                                                 )}
                                                 <DropdownMenu>
