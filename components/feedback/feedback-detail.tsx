@@ -25,6 +25,10 @@ import {
     Github,
     ExternalLink,
     ClipboardList,
+    Bot,
+    Target,
+    BarChart3,
+    MessageSquareQuote,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -34,6 +38,8 @@ import { toast } from "sonner";
 import { AISuggestedReply } from "@/components/feedback/ai-suggested-reply";
 import { AIConvertTaskButton } from "@/components/feedback/ai-convert-task-button";
 import { AIBadge } from "@/components/ai/ai-badge";
+import { CommentForm } from "@/components/feedback/comment-form";
+import { SyncGitHubCommentsButton } from "@/components/feedback/sync-github-comments-button";
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
     bug: <Bug className="h-5 w-5 text-red-500" />,
@@ -60,6 +66,7 @@ interface FeedbackDetailProps {
             id: string;
             content: string;
             createdAt: Date;
+            isFromGitHub?: boolean;
             user: { id: string; name: string; email: string };
         }[];
         tasks: { id: string; title: string; status: string }[];
@@ -67,6 +74,7 @@ interface FeedbackDetailProps {
         aiSuggestedType?: string | null;
         aiSuggestedPriority?: string | null;
         aiConfidence?: number | null;
+        agentPrompt?: string | null;
         githubIssueNumber?: number | null;
         githubUrl?: string | null;
     };
@@ -146,37 +154,127 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
 
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-base">Comments ({feedback.comments.length})</CardTitle>
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-base">Comments ({feedback.comments.length})</CardTitle>
+                                <SyncGitHubCommentsButton
+                                    feedbackId={feedback.id}
+                                    hasGitHubIssue={Boolean(feedback.githubIssueNumber)}
+                                />
+                            </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {feedback.comments.length === 0 && (
                                 <p className="text-sm text-muted-foreground text-center py-4">
-                                    No comments yet.
+                                    No comments yet. Be the first to comment!
                                 </p>
                             )}
                             {feedback.comments.map((comment) => (
                                 <div key={comment.id} className="flex gap-3">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">
-                                        {comment.user.name.charAt(0).toUpperCase()}
+                                    <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium ${comment.isFromGitHub
+                                        ? "bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900"
+                                        : "bg-primary text-primary-foreground"
+                                        }`}>
+                                        {comment.isFromGitHub ? (
+                                            <Github className="h-4 w-4" />
+                                        ) : (
+                                            comment.user.name.charAt(0).toUpperCase()
+                                        )}
                                     </div>
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm font-medium">
                                                 {comment.user.name}
                                             </span>
+                                            {comment.isFromGitHub && (
+                                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5">
+                                                    <Github className="h-2.5 w-2.5" />
+                                                    GitHub
+                                                </Badge>
+                                            )}
                                             <span className="text-xs text-muted-foreground">
-                                                {format(new Date(comment.createdAt), "MMM d, yyyy")}
+                                                {format(new Date(comment.createdAt), "MMM d, yyyy 'at' h:mm a")}
                                             </span>
                                         </div>
-                                        <p className="text-sm mt-1">{comment.content}</p>
+                                        <p className="text-sm mt-1 whitespace-pre-wrap">{comment.content}</p>
                                     </div>
                                 </div>
                             ))}
+
+                            <Separator className="my-2" />
+
+                            {/* Comment Form */}
+                            <CommentForm feedbackId={feedback.id} />
                         </CardContent>
                     </Card>
 
                     {/* AI Suggested Reply */}
                     <AISuggestedReply feedbackId={feedback.id} />
+
+                    {/* AI Analysis Details */}
+                    {(feedback.aiSummary || feedback.agentPrompt) && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <Bot className="h-4 w-4 text-purple-500" />
+                                    AI Analysis Details
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                            <Target className="h-3 w-3" /> Suggested Type
+                                        </label>
+                                        <p className="text-sm font-medium capitalize">
+                                            {feedback.aiSuggestedType || "N/A"}
+                                        </p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                            <BarChart3 className="h-3 w-3" /> Confidence Score
+                                        </label>
+                                        <p className="text-sm font-medium">
+                                            {feedback.aiConfidence
+                                                ? `${Math.round(feedback.aiConfidence * 100)}%`
+                                                : "N/A"}
+                                        </p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                            <Zap className="h-3 w-3" /> Suggested Priority
+                                        </label>
+                                        <p className="text-sm font-medium capitalize">
+                                            {feedback.aiSuggestedPriority || "N/A"}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {feedback.aiSummary && (
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                            <Sparkles className="h-3 w-3" /> Analysis Summary
+                                        </label>
+                                        <div className="rounded-md bg-muted/50 p-3 text-sm leading-relaxed">
+                                            {feedback.aiSummary}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {feedback.agentPrompt && (
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                            <MessageSquareQuote className="h-3 w-3" /> Agent Prompt Used
+                                        </label>
+                                        <div className="rounded-md bg-muted p-3">
+                                            <pre className="text-xs whitespace-pre-wrap font-mono text-muted-foreground overflow-auto max-h-[200px]">
+                                                {feedback.agentPrompt}
+                                            </pre>
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
 
                 <div className="space-y-4">

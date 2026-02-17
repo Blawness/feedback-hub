@@ -114,6 +114,9 @@ model Comment {
   id      String @id @default(cuid())
   content String
 
+  githubCommentId Int?    @unique // GitHub comment ID for sync
+  isFromGitHub    Boolean @default(false) // true if comment originated from GitHub
+
   userId     String
   user       User      @relation(fields: [userId], references: [id])
   feedbackId String?
@@ -122,9 +125,11 @@ model Comment {
   task       Task?     @relation(fields: [taskId], references: [id])
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@index([feedbackId])
   @@index([taskId])
+  @@index([githubCommentId])
 }
 
 model AiSettings {

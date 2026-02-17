@@ -107,7 +107,8 @@ export async function syncGitHubIssueState(
         repo,
         issue_number: issueNumber,
         state,
-    });
+        ...(state === "closed" ? { state_reason: "not_planned" } : { state_reason: "reopened" }),
+    } as any);
 
     return true;
 }
@@ -127,7 +128,73 @@ export async function closeGitHubIssue(
         repo,
         issue_number: issueNumber,
         state: "closed",
-    });
+        state_reason: "not_planned",
+    } as any);
 
     return true;
+}
+
+/** Create a comment on a GitHub issue */
+export async function createGitHubComment(
+    project: ProjectForGitHub,
+    issueNumber: number,
+    body: string,
+    authorName?: string
+): Promise<{ id: number } | null> {
+    const octokit = getOctokit();
+    if (!octokit || !project.githubRepoFullName) return null;
+
+    const { owner, repo } = parseRepo(project.githubRepoFullName);
+
+    const commentBody = authorName
+        ? `**${authorName}** commented via Feedback Hub:\n\n${body}`
+        : body;
+
+    const comment = await octokit.rest.issues.createComment({
+        owner,
+        repo,
+        issue_number: issueNumber,
+        body: commentBody,
+    });
+
+    return { id: comment.data.id };
+}
+
+export interface GitHubCommentData {
+    id: number;
+    body: string;
+    user: {
+        login: string;
+        avatar_url: string;
+    } | null;
+    created_at: string;
+    updated_at: string;
+}
+
+/** Fetch all comments from a GitHub issue */
+export async function fetchGitHubIssueComments(
+    project: ProjectForGitHub,
+    issueNumber: number
+): Promise<GitHubCommentData[]> {
+    const octokit = getOctokit();
+    if (!octokit || !project.githubRepoFullName) return [];
+
+    const { owner, repo } = parseRepo(project.githubRepoFullName);
+
+    const { data } = await octokit.rest.issues.listComments({
+        owner,
+        repo,
+        issue_number: issueNumber,
+        per_page: 100,
+    });
+
+    return data.map((c) => ({
+        id: c.id,
+        body: c.body ?? "",
+        user: c.user
+            ? { login: c.user.login, avatar_url: c.user.avatar_url }
+            : null,
+        created_at: c.created_at,
+        updated_at: c.updated_at,
+    }));
 }
