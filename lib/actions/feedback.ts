@@ -331,3 +331,9 @@ export async function getLatestFeedbackInfo() {
         },
     });
 }
+
+export async function getOpenFeedbackCount() {
+    return await prisma.feedback.count({
+        where: { status: "OPEN" },
+    });
+}

@@ -49,6 +49,9 @@ export function NotificationListener() {
                         });
                     }
 
+                    // Dispatch custom event for Header to update badge
+                    window.dispatchEvent(new Event('feedback-new'));
+
                     // Show toast
                     toast.info("New Feedback Received", {
                         description: latest.title,
