@@ -39,7 +39,12 @@ export function FeedbackDialog({ projects, trigger, initialData, open: controlle
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[650px]">
+            <DialogContent
+                className="sm:max-w-[650px]"
+                onInteractOutside={(e) => {
+                    e.preventDefault();
+                }}
+            >
                 <DialogHeader>
                     <DialogTitle>{initialData ? 'Edit Feedback' : 'Submit Feedback'}</DialogTitle>
                     <DialogDescription>

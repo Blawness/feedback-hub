@@ -60,6 +60,7 @@ export async function syncGitHubRepos() {
                     githubRepoId: repo.id,
                     githubRepoFullName: repo.full_name,
                     apiKey: `kp_${nanoid(24)}`,
+                    isActive: false,
                 },
             });
             syncedProjects.push(project.name);

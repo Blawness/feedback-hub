@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   title: "Feedback Hub — Centralized Feedback & Task Management",
   description:
     "Collect, manage, and resolve feedback from all your applications in one place.",
+  icons: {
+    icon: '/icon',
+  },
 };
 
 export default function RootLayout({

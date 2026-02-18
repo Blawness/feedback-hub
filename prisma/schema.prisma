@@ -32,7 +32,7 @@ model Project {
   githubRepoId       Int?     @unique // GitHub repo ID for sync
   githubRepoFullName String? // e.g., "Blawness/feedback-hub"
   apiKey             String   @unique
-  isActive           Boolean  @default(true)
+  isActive           Boolean  @default(false)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

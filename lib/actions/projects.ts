@@ -40,6 +40,24 @@ export async function regenerateApiKey(id: string) {
     return newKey;
 }
 
+export async function bulkUpdateProjectStatus(idsToEnable: string[], idsToDisable: string[]) {
+    if (idsToEnable.length > 0) {
+        await prisma.project.updateMany({
+            where: { id: { in: idsToEnable } },
+            data: { isActive: true },
+        });
+    }
+
+    if (idsToDisable.length > 0) {
+        await prisma.project.updateMany({
+            where: { id: { in: idsToDisable } },
+            data: { isActive: false },
+        });
+    }
+
+    revalidatePath("/projects");
+}
+
 export async function getDashboardStats() {
     const [projectCount, feedbackCount, taskCount, recentFeedbacks, activeProjects] = await Promise.all([
         prisma.project.count({ where: { isActive: true } }),
