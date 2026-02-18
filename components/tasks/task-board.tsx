@@ -96,6 +96,7 @@ const FEEDBACK_TYPE_CONFIG: Record<string, { icon: any; color: string; bg: strin
 export function TaskBoard({ tasks: initialTasks, projects }: { tasks: Task[]; projects: Project[] }) {
     const [tasks, setTasks] = useState<Task[]>(initialTasks);
     const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
+    const [initialStatus, setInitialStatus] = useState<string | null>(null);
     const [isPending, startTransition] = useTransition();
 
     // Sync state with props if initialTasks change (e.g. from server revalidation)
@@ -126,12 +127,9 @@ export function TaskBoard({ tasks: initialTasks, projects }: { tasks: Task[]; pr
         // Distribute tasks
         tasks.forEach((task) => {
             const status = task.status;
-            // Handle tasks with invalid status by putting them in todo or keeping them if the column exists
-            // Since we defined COLUMNS, we only care about those.
             if (cols.has(status)) {
                 cols.get(status)!.push(task);
             } else {
-                // Fallback for unknown status
                 const todo = cols.get("todo");
                 if (todo) todo.push(task);
             }
@@ -148,7 +146,12 @@ export function TaskBoard({ tasks: initialTasks, projects }: { tasks: Task[]; pr
     }
 
     function handleDragStart(event: DragStartEvent) {
-        setActiveId(event.active.id);
+        const { active } = event;
+        setActiveId(active.id);
+        const task = tasks.find(t => t.id === active.id);
+        if (task) {
+            setInitialStatus(task.status);
+        }
     }
 
     function handleDragOver(event: DragOverEvent) {
@@ -174,11 +177,6 @@ export function TaskBoard({ tasks: initialTasks, projects }: { tasks: Task[]; pr
             const activeIndex = prev.findIndex((t) => t.id === activeId);
             const newTasks = [...prev];
 
-            // Just update the status to the new container
-            // If overContainer is a task, find its status. If it's a column, use it directly.
-            // But wait, findContainer returns the status string for both cases.
-            // So we just update the status.
-
             if (activeIndex !== -1) {
                 newTasks[activeIndex] = {
                     ...newTasks[activeIndex],
@@ -192,28 +190,23 @@ export function TaskBoard({ tasks: initialTasks, projects }: { tasks: Task[]; pr
 
     function handleDragEnd(event: DragEndEvent) {
         const { active, over } = event;
-        const activeContainer = findContainer(active.id);
-        const overContainer = over ? findContainer(over.id) : null;
 
-        if (
-            activeContainer &&
-            overContainer &&
-            activeContainer !== overContainer
-        ) {
-            // Status changed
-            const taskId = active.id as string;
-            const newStatus = overContainer as string;
+        if (over) {
+            const overContainer = findContainer(over.id);
 
-            // Optimistic update was already done in DragOver, but let's confirm/persist
-            // We don't need to setTasks here because DragOver handled the visual move (by changing status)
-            // But if we want to ensure it sticks or handle reordering (if we had it), we would do it here.
+            // If the status has changed from the initial status, persist it
+            if (overContainer && initialStatus && overContainer !== initialStatus) {
+                const taskId = active.id as string;
+                const newStatus = overContainer as string;
 
-            startTransition(async () => {
-                await updateTaskStatus(taskId, newStatus);
-            });
+                startTransition(async () => {
+                    await updateTaskStatus(taskId, newStatus);
+                });
+            }
         }
 
         setActiveId(null);
+        setInitialStatus(null);
     }
 
     // Also support manual status change via Select

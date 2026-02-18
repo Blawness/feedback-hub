@@ -279,6 +279,15 @@ export async function updateFeedbackStatus(id: string, status: string) {
     revalidatePath(`/feedback/${id}`);
 }
 
+export async function markFeedbackAsRead(id: string) {
+    await prisma.feedback.update({
+        where: { id },
+        data: { status: "IN_REVIEW" },
+    });
+    revalidatePath("/");
+    revalidatePath("/feedback");
+}
+
 export async function updateFeedbackPriority(id: string, priority: string) {
     const feedback = await prisma.feedback.update({
         where: { id },

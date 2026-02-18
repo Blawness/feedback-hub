@@ -10,15 +10,18 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { useEffect, useState } from "react";
-import { getOpenFeedbackCount, getFeedbacks } from "@/lib/actions/feedback";
+import { getOpenFeedbackCount, getFeedbacks, markFeedbackAsRead } from "@/lib/actions/feedback";
 import Link from "next/link";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner"; // Assuming sonner is available
+import { Check } from "lucide-react";
 
 export function Header() {
     const [count, setCount] = useState(0);
     const [recentFeedback, setRecentFeedback] = useState<any[]>([]);
     const [open, setOpen] = useState(false);
+    const [marking, setMarking] = useState<string | null>(null);
 
     const refreshNotifications = async () => {
         try {
@@ -30,6 +33,22 @@ export function Header() {
             setRecentFeedback(f.feedbacks);
         } catch (e) {
             console.error("Failed to fetch notifications", e);
+        }
+    };
+
+    const handleMarkAsRead = async (e: React.MouseEvent, id: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setMarking(id);
+
+        try {
+            await markFeedbackAsRead(id);
+            toast.success("Marked as read");
+            await refreshNotifications();
+        } catch (err) {
+            toast.error("Failed to mark as read");
+        } finally {
+            setMarking(null);
         }
     };
 
@@ -48,6 +67,15 @@ export function Header() {
             clearInterval(interval);
         };
     }, []);
+
+    // Update page title with notification count
+    useEffect(() => {
+        if (count > 0) {
+            document.title = `(${count}) Feedback Hub`;
+        } else {
+            document.title = "Feedback Hub";
+        }
+    }, [count]);
 
     return (
         <header className="flex h-16 items-center gap-4 border-b border-border bg-background px-6">
@@ -87,25 +115,40 @@ export function Header() {
                         ) : (
                             <div className="divide-y">
                                 {recentFeedback.map((item) => (
-                                    <Link
+                                    <div
                                         key={item.id}
-                                        href={`/feedback/${item.id}`}
-                                        onClick={() => setOpen(false)}
-                                        className="flex flex-col gap-1 p-4 hover:bg-muted/50 transition-colors"
+                                        className="relative group hover:bg-muted/50 transition-colors"
                                     >
-                                        <p className="text-sm font-medium leading-none line-clamp-1">
-                                            {item.title}
-                                        </p>
-                                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                            <span>{item.project.name}</span>
-                                            <span>{formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}</span>
-                                        </div>
-                                    </Link>
+                                        <Link
+                                            href={`/feedback/${item.id}`}
+                                            onClick={() => setOpen(false)}
+                                            className="block p-4 pr-10"
+                                        >
+                                            <p className="text-sm font-medium leading-none line-clamp-1 mb-1">
+                                                {item.title}
+                                            </p>
+                                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                                <span>{item.project.name}</span>
+                                                <span>{formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}</span>
+                                            </div>
+                                        </Link>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={(e) => handleMarkAsRead(e, item.id)}
+                                            disabled={marking === item.id}
+                                            title="Mark as read"
+                                        >
+                                            <Check className="h-4 w-4 text-green-600" />
+                                        </Button>
+                                    </div>
                                 ))}
                             </div>
                         )}
                     </ScrollArea>
                     <div className="border-t p-2">
+
                         <Button variant="ghost" className="w-full h-8 text-xs" asChild>
                             <Link href="/feedback?status=OPEN" onClick={() => setOpen(false)}>
                                 View all feedback
