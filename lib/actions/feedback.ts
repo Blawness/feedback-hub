@@ -314,3 +314,20 @@ export async function getFeedbackById(id: string) {
         },
     });
 }
+
+/**
+ * Fetches the ID and creation time of the most recent feedback.
+ * Used for polling notifications.
+ */
+export async function getLatestFeedbackInfo() {
+    return await prisma.feedback.findFirst({
+        select: {
+            id: true,
+            createdAt: true,
+            title: true,
+        },
+        orderBy: {
+            createdAt: "desc",
+        },
+    });
+}

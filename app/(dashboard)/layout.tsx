@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { ChatAssistant } from "@/components/ai/chat-assistant";
+import { NotificationListener } from "@/components/shared/notification-listener";
 
 export default function DashboardLayout({
     children,
@@ -9,6 +10,7 @@ export default function DashboardLayout({
 }) {
     return (
         <div className="flex min-h-screen bg-background">
+            <NotificationListener />
             <Sidebar />
             <div className="flex-1 flex flex-col">
                 <Header />

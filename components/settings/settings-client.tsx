@@ -1,20 +1,32 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
+import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Github, CheckCircle2 } from "lucide-react";
+import { RefreshCw, Github, CheckCircle2, Bell, Volume2 } from "lucide-react";
 import { syncProjects } from "@/lib/actions/projects";
 import { AiSettingsCard } from "@/components/settings/ai-settings-card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { useSettingsStore } from "@/lib/store/use-settings-store";
 
 export function SettingsClient() {
     const [isPending, startTransition] = useTransition();
+    const { notificationsEnabled, setNotificationsEnabled } = useSettingsStore();
     const [syncResult, setSyncResult] = useState<{
         success: boolean;
         count?: number;
         error?: string;
     } | null>(null);
+
+    const toggleNotifications = (val: boolean) => {
+        setNotificationsEnabled(val);
+        if (val) {
+            toast.success("Notification sound enabled");
+        }
+    };
 
     function handleSync() {
         startTransition(async () => {
@@ -63,6 +75,36 @@ export function SettingsClient() {
                                 )}
                             </div>
                         )}
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Bell className="h-5 w-5" />
+                            Notification Settings
+                        </CardTitle>
+                        <CardDescription>
+                            Configure how you want to be alerted when new feedback arrives.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between space-x-2">
+                            <div className="flex items-center gap-2">
+                                <Volume2 className="h-4 w-4 text-muted-foreground" />
+                                <Label htmlFor="notifications-sound" className="flex flex-col gap-1 cursor-pointer">
+                                    <span>Sound Alerts</span>
+                                    <span className="font-normal text-xs text-muted-foreground">
+                                        Play a sound when new feedback or issues are detected.
+                                    </span>
+                                </Label>
+                            </div>
+                            <Switch
+                                id="notifications-sound"
+                                checked={notificationsEnabled}
+                                onCheckedChange={toggleNotifications}
+                            />
+                        </div>
                     </CardContent>
                 </Card>
 
