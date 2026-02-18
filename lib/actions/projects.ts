@@ -7,7 +7,10 @@ import { nanoid } from "nanoid";
 
 export async function getProjects() {
     return await prisma.project.findMany({
-        orderBy: { updatedAt: "desc" },
+        orderBy: [
+            { isActive: "desc" },
+            { updatedAt: "desc" },
+        ],
         include: {
             _count: {
                 select: { feedbacks: true, tasks: true },

@@ -16,6 +16,13 @@ import {
     CheckSquare,
 } from "lucide-react";
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
     syncProjects,
     regenerateApiKey,
 } from "@/lib/actions/projects";
@@ -39,51 +46,28 @@ export function ProjectList({ projects }: { projects: Project[] }) {
     const [isPending, startTransition] = useTransition();
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [hasChanges, setHasChanges] = useState(false);
+    const [sortField, setSortField] = useState<string>("active");
 
     useEffect(() => {
         setLocalProjects(projects);
         setHasChanges(false);
     }, [projects]);
 
-    // Sync local state when props change (e.g. after save/revalidate)
-    // using a key on the parent or effect could work, but key is cleaner. 
-    // However, since we are inside the component, let's just use an effect or key.
-    // Actually, simpler: when `projects` prop updates, we should update `localProjects` IF not editing?
-    // The standard way is key-ing the component, but here we can just reset verify. 
-    // Let's use useEffect to reset local state when prop projects changes (deep comparison or just ref).
-    // For now, let's trust that revalidatePath will re-render this component with new props
-    // and we can re-initialize state if we use a key on the parent logic, 
-    // OR we just use useEffect.
-
-    // Better yet, just use `useEffect` to sync:
-    // useEffect(() => { setLocalProjects(projects); setHasChanges(false); }, [projects]);
-
-    // Actually, let's keep it simple. The user clicks Save, server action runs, revalidatePath runs, 
-    // page re-renders, new projects prop comes in. 
-    // We need to ensure that localProjects is updated.
-
-    // Let's use a key in the page.tsx or just useEffect here. useTransition handles the pending state.
-
-    // Let's use useEffect.
-    /* useEffect(() => {
-        setLocalProjects(projects);
-        setHasChanges(false);
-    }, [projects]); */
-    // The above is risky if user is editing and a background sync happens. 
-    // But sync is manual. So it should be fine.
-
-    // Actually, React recommends `key` to reset state. 
-    // But I can't easily change the parent `page.tsx` key without another file edit.
-    // So I will use `useEffect`.
-
-    // Re-import useEffect. 
-    // Note: The previous imports need to be preserved or re-written properly.
-    // I am rewriting the whole component body so I can add useEffect easily.
+    const sortedProjects = [...localProjects].sort((a, b) => {
+        if (sortField === "active") {
+            if (a.isActive === b.isActive) return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+            return a.isActive ? -1 : 1;
+        }
+        if (sortField === "name") return a.name.localeCompare(b.name);
+        if (sortField === "newest") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        if (sortField === "feedback") return b._count.feedbacks - a._count.feedbacks;
+        if (sortField === "tasks") return b._count.tasks - a._count.tasks;
+        return 0;
+    });
 
     function handleSync() {
         startTransition(async () => {
             const res = await syncProjects();
-            // Optional: toast result
             if (res.success) {
                 // projects prop will update via revalidatePath
             }
@@ -107,14 +91,6 @@ export function ProjectList({ projects }: { projects: Project[] }) {
                 .filter((p) => !p.isActive && projects.find(op => op.id === p.id)?.isActive)
                 .map((p) => p.id);
 
-            // Also include projects that might have been new but we just want to ensure state matches local
-            // Although the logic above only captures *changes*. 
-            // If we want to be robust, we can just send all enabled and all disabled, 
-            // but the server action expects lists to update.
-            // Let's stick to diffs to be efficient, or just send all IsActive=true IDs?
-            // The user said "save settingannya". 
-            // Sending diffs is better.
-
             await import('@/lib/actions/projects').then(mod =>
                 mod.bulkUpdateProjectStatus(idsToEnable, idsToDisable)
             );
@@ -137,20 +113,37 @@ export function ProjectList({ projects }: { projects: Project[] }) {
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-end gap-2">
-                {hasChanges && (
-                    <Button onClick={handleSave} disabled={isPending} variant="default">
-                        {isPending ? "Saving..." : "Save Changes"}
+            <div className="flex flex-col sm:flex-row justify-between gap-4">
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Sort by:</span>
+                    <Select value={sortField} onValueChange={setSortField}>
+                        <SelectTrigger className="w-[160px]">
+                            <SelectValue placeholder="Sort by" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="active">Active First</SelectItem>
+                            <SelectItem value="name">Project Name</SelectItem>
+                            <SelectItem value="newest">Newly Created</SelectItem>
+                            <SelectItem value="feedback">Most Feedback</SelectItem>
+                            <SelectItem value="tasks">Most Tasks</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="flex justify-end gap-2">
+                    {hasChanges && (
+                        <Button onClick={handleSave} disabled={isPending} variant="default" className="shadow-violet-500/20 shadow-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+                            {isPending ? "Saving..." : "Save Changes"}
+                        </Button>
+                    )}
+                    <Button onClick={handleSync} disabled={isPending} variant="outline" className="border-blue-200 dark:border-blue-900/50 hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                        <RefreshCw className={`mr-2 h-4 w-4 ${isPending ? "animate-spin" : ""}`} />
+                        {isPending ? "Syncing..." : "Sync from GitHub"}
                     </Button>
-                )}
-                <Button onClick={handleSync} disabled={isPending} variant="outline">
-                    <RefreshCw className={`mr-2 h-4 w-4 ${isPending ? "animate-spin" : ""}`} />
-                    {isPending ? "Syncing..." : "Sync from GitHub"}
-                </Button>
+                </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {localProjects.map((project) => (
+                {sortedProjects.map((project) => (
                     <Card key={project.id} className={!project.isActive ? "opacity-60" : ""}>
                         <CardHeader className="pb-3">
                             <div className="flex items-start justify-between">
