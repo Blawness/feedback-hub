@@ -67,16 +67,19 @@ function extractUserText(message: UIMessage) {
                 typeof part === "object" &&
                 part !== null &&
                 "type" in part &&
-                (part as { type?: string }).type === "text" &&
-                typeof (part as { text?: unknown }).text === "string"
+                (part as { type?: string }).type === "text"
             ) {
-                chunks.push((part as { text: string }).text);
+                const text = (part as { text?: unknown }).text;
+                if (typeof text === "string") {
+                    chunks.push(text);
+                }
             }
         }
     }
 
-    if (typeof (message as { content?: unknown }).content === "string") {
-        chunks.push((message as { content: string }).content);
+    const content = (message as { content?: unknown }).content;
+    if (typeof content === "string") {
+        chunks.push(content);
     }
 
     return chunks.join("\n").trim();
