@@ -9,7 +9,8 @@ import {
     CheckSquare,
     Settings,
     LogOut,
-    BookText
+    BookText,
+    Bot
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Logo } from "@/components/ui/logo";
@@ -19,6 +20,7 @@ const navigation = [
     { name: "Feedback", href: "/feedback", icon: MessageSquare },
     { name: "Tasks", href: "/tasks", icon: CheckSquare },
     { name: "Projects", href: "/projects", icon: FolderGit2 },
+    { name: "AI Chat", href: "/chat", icon: Bot },
     { name: "Settings", href: "/settings", icon: Settings },
     { name: "Docs", href: "/docs", icon: BookText },
 ];
