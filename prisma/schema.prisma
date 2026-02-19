@@ -16,9 +16,10 @@ model User {
   role      String   @default("developer") // admin, developer
   createdAt DateTime @default(now())
 
-  feedbacks Feedback[]
-  tasks     Task[]
-  comments  Comment[]
+  feedbacks    Feedback[]
+  tasks        Task[]
+  comments     Comment[]
+  chatMessages ChatMessage[]
 
   @@index([email])
 }
@@ -36,8 +37,9 @@ model Project {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  feedbacks Feedback[]
-  tasks     Task[]
+  feedbacks    Feedback[]
+  tasks        Task[]
+  chatMessages ChatMessage[]
 
   @@index([slug])
   @@index([apiKey])
@@ -102,7 +104,8 @@ model Task {
   feedbackId String?
   feedback   Feedback? @relation(fields: [feedbackId], references: [id])
 
-  comments Comment[]
+  comments     Comment[]
+  chatMessages ChatMessage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -145,4 +148,24 @@ model AiSettings {
   templateId      String?  @default("default")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model ChatMessage {
+  id      String @id @default(cuid())
+  role    String // "user" | "assistant"
+  content String @db.Text
+
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+  @@index([projectId])
+  @@index([userId])
 }

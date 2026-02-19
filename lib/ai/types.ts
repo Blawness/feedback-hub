@@ -32,8 +32,15 @@ export interface ChatMessage {
     content: string;
 }
 
+export type ChatActionType = "update_status" | "add_comment" | "create_task" | "copy_prompt";
+
+export interface ChatActionHint {
+    type: ChatActionType;
+    label: string;
+    payload: Record<string, string>;
+}
+
 export interface SemanticSearchResult {
-    feedbackId: string;
-    relevanceScore: number;
-    reason: string;
+    content: string;
+    similarity: number;
 }

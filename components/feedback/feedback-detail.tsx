@@ -399,14 +399,20 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
                                 onClick={handleCreateTask}
                                 className="w-full gap-2 justify-start"
                                 variant="outline"
-                                disabled={isCreatingTask}
+                                disabled={isCreatingTask || feedback.tasks.length > 0}
                             >
                                 {isCreatingTask ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : feedback.tasks.length > 0 ? (
+                                    <ClipboardList className="h-4 w-4 text-green-500" />
                                 ) : (
                                     <ClipboardList className="h-4 w-4" />
                                 )}
-                                {isCreatingTask ? "Creating Task..." : "Create Task manually"}
+                                {isCreatingTask
+                                    ? "Creating Task..."
+                                    : feedback.tasks.length > 0
+                                        ? "Task Already Exists"
+                                        : "Create Task manually"}
                             </Button>
 
 
