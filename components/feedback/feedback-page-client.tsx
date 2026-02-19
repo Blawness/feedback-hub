@@ -36,7 +36,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, ArrowLeft, ArrowRight, MoreHorizontal, Eye, Pencil, Trash2, MessageSquarePlus, Github, ClipboardList, ArrowUpDown, ChevronUp, ChevronDown, XCircle } from "lucide-react";
+import { Search, ArrowLeft, ArrowRight, MoreHorizontal, Eye, Pencil, Trash2, MessageSquarePlus, Github, ClipboardList, ArrowUpDown, ChevronUp, ChevronDown, XCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -117,6 +117,7 @@ export function FeedbackPageClient({
     const [searchValue, setSearchValue] = useState(filters.search || "");
     const [editingFeedback, setEditingFeedback] = useState<FeedbackItem | null>(null);
     const [deletingFeedback, setDeletingFeedback] = useState<FeedbackItem | null>(null);
+    const [creatingTaskId, setCreatingTaskId] = useState<string | null>(null);
     const totalPages = Math.ceil(total / 20);
 
     async function confirmDelete() {
@@ -131,11 +132,15 @@ export function FeedbackPageClient({
     }
 
     async function handleCreateTask(feedbackId: string) {
+        if (creatingTaskId) return;
+        setCreatingTaskId(feedbackId);
         try {
             await createTaskFromFeedback(feedbackId);
             toast.success("Task created and assigned successfully");
         } catch {
             toast.error("Failed to create task");
+        } finally {
+            setCreatingTaskId(null);
         }
     }
 
@@ -388,10 +393,17 @@ export function FeedbackPageClient({
                                                             e.stopPropagation();
                                                             handleCreateTask(fb.id);
                                                         }}
+                                                        disabled={creatingTaskId === fb.id}
                                                         title="Assign to Task"
                                                     >
-                                                        <ClipboardList className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                                        <span className="text-blue-700 dark:text-blue-300">Assign</span>
+                                                        {creatingTaskId === fb.id ? (
+                                                            <Loader2 className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-spin" />
+                                                        ) : (
+                                                            <ClipboardList className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                                        )}
+                                                        <span className="text-blue-700 dark:text-blue-300">
+                                                            {creatingTaskId === fb.id ? "Assigning..." : "Assign"}
+                                                        </span>
                                                     </Button>
                                                 )}
                                                 {fb.status !== "CLOSED" && fb.status !== "ASSIGNED" && (
@@ -432,8 +444,15 @@ export function FeedbackPageClient({
                                                             Edit
                                                         </DropdownMenuItem>
                                                         {fb._count.tasks === 0 && (
-                                                            <DropdownMenuItem onClick={() => handleCreateTask(fb.id)}>
-                                                                <ClipboardList className="mr-2 h-4 w-4" />
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleCreateTask(fb.id)}
+                                                                disabled={creatingTaskId === fb.id}
+                                                            >
+                                                                {creatingTaskId === fb.id ? (
+                                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                                ) : (
+                                                                    <ClipboardList className="mr-2 h-4 w-4" />
+                                                                )}
                                                                 Assign Task
                                                             </DropdownMenuItem>
                                                         )}

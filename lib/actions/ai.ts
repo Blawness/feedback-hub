@@ -329,3 +329,108 @@ ${tasks.map((t) => `- [${t.status}] [${t.priority}] ${t.title}`).join("\n")}
         return { error: "Failed to get AI response." };
     }
 }
+
+// ─── Feature 7: Task Chat Assistant ──────────────────────
+
+export async function chatWithTaskAssistant(
+    taskId: string,
+    message: string,
+    history: { role: "user" | "assistant"; content: string }[] = []
+) {
+    if (!isAIEnabled() || !ai) {
+        return { error: "AI is not available." };
+    }
+
+    const config = await getAiConfig();
+
+    // Fetch task details with related data
+    const task = await prisma.task.findUnique({
+        where: { id: taskId },
+        include: {
+            project: true,
+            assignee: true,
+            feedback: {
+                include: {
+                    comments: {
+                        take: 5,
+                        orderBy: { createdAt: "desc" },
+                        include: { user: true }
+                    }
+                }
+            },
+            comments: {
+                take: 5,
+                orderBy: { createdAt: "desc" },
+                include: { user: true }
+            }
+        }
+    });
+
+    if (!task) return { error: "Task not found." };
+
+    // Build task context
+    const taskContext = `
+Current Task Context:
+Title: ${task.title}
+Status: ${task.status}
+Priority: ${task.priority}
+Description: ${task.description || "No description"}
+Project: ${task.project.name}
+Assignee: ${task.assignee?.name || "Unassigned"}
+Due Date: ${task.dueDate ? task.dueDate.toISOString() : "None"}
+
+Related Feedback:
+${task.feedback ? `
+Title: ${task.feedback.title}
+Type: ${task.feedback.type}
+Description: ${task.feedback.description}
+` : "No related feedback"}
+
+Recent Comments:
+${task.comments.map(c => `- ${c.user.name}: ${c.content}`).join("\n")}
+`;
+
+    const systemPrompt = `You are a specialized AI assistant for a specific task in a project management tool.
+    
+${taskContext}
+
+Your goal is to help the user with this specific task. You can:
+- Explain the task requirements
+- Suggest implementation steps
+- Draft comments or responses
+- Analyze the related feedback
+- specific technical advice based on the task description
+
+Rules:
+- Be concise and focused on this task
+- Use the provided context to answer accurately
+- If asked about code, provide relevant snippets based on the task description
+- Reply in the same language as the user
+`;
+
+    try {
+        const contents = [
+            { role: "user" as const, parts: [{ text: systemPrompt }] },
+            { role: "model" as const, parts: [{ text: "Understood. I have the task context and am ready to assist." }] },
+            ...history.map((h) => ({
+                role: (h.role === "assistant" ? "model" : "user") as "user" | "model",
+                parts: [{ text: h.content }],
+            })),
+            { role: "user" as const, parts: [{ text: message }] },
+        ];
+
+        const response = await ai.models.generateContent({
+            model: config.model,
+            contents,
+            config: {
+                temperature: config.temperature,
+                maxOutputTokens: config.maxOutputTokens,
+            },
+        });
+
+        return { success: true, reply: response.text?.trim() || "No response." };
+    } catch (error) {
+        console.error("Task Chat failed:", error);
+        return { error: "Failed to get AI response." };
+    }
+}

@@ -33,10 +33,22 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Clock, FolderGit2, Bug, Lightbulb, TrendingUp, HelpCircle } from "lucide-react";
+import { Trash2, Clock, FolderGit2, Bug, Lightbulb, TrendingUp, HelpCircle, Eye } from "lucide-react";
 import { updateTaskStatus, deleteTask } from "@/lib/actions/tasks";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { TaskPreviewDialog } from "./task-preview-dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const COLUMNS = [
     { id: "todo", label: "To Do", color: "bg-gray-100 dark:bg-gray-800" },
@@ -45,7 +57,7 @@ const COLUMNS = [
     { id: "done", label: "Done", color: "bg-green-50 dark:bg-green-900/20" },
 ];
 
-interface Task {
+export interface Task {
     id: string;
     title: string;
     description: string | null;
@@ -55,7 +67,7 @@ interface Task {
     createdAt: Date;
     project: { id: string; name: string };
     assignee: { id: string; name: string } | null;
-    feedback: { id: string; title: string; type: string } | null;
+    feedback: { id: string; title: string; type: string; agentPrompt?: string | null } | null;
 }
 
 interface Project {
@@ -421,16 +433,54 @@ function TaskCard({
                             )}
                         </div>
                     </div>
-                    {onDelete && !isOverlay && (
-                        <div onPointerDown={(e) => e.stopPropagation()}>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity -mr-2 -mt-2"
-                                onClick={() => onDelete(task.id)}
-                            >
-                                <Trash2 className="h-3 w-3 text-destructive" />
-                            </Button>
+                    {!isOverlay && (
+                        <div className="flex flex-col items-center -mr-2 -mt-2 opacity-0 group-hover:opacity-100 transition-opacity" onPointerDown={(e) => e.stopPropagation()}>
+                            <TaskPreviewDialog
+                                task={task}
+                                trigger={
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                        title="View Details"
+                                    >
+                                        <Eye className="h-4 w-4" />
+                                    </Button>
+                                }
+                            />
+                            {onDelete && (
+                                <>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                title="Delete Task"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Delete Task</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    Are you sure you want to delete <span className="font-medium">"{task.title}"</span>? This action cannot be undone.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    onClick={() => onDelete(task.id)}
+                                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                                >
+                                                    Delete
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </>
+                            )}
                         </div>
                     )}
                 </div>

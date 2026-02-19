@@ -27,7 +27,7 @@ export async function getTasks({
         include: {
             project: { select: { id: true, name: true } },
             assignee: { select: { id: true, name: true } },
-            feedback: { select: { id: true, title: true, type: true } },
+            feedback: { select: { id: true, title: true, type: true, agentPrompt: true } },
         },
     });
 

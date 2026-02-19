@@ -19,6 +19,7 @@ import {
     HelpCircle,
     Zap,
     Clock,
+    Loader2,
     User,
     FolderGit2,
     Sparkles,
@@ -29,14 +30,13 @@ import {
     Target,
     BarChart3,
     MessageSquareQuote,
+    Copy,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { updateFeedbackStatus } from "@/lib/actions/feedback";
 import { createTaskFromFeedback } from "@/lib/actions/tasks";
 import { toast } from "sonner";
-import { AISuggestedReply } from "@/components/feedback/ai-suggested-reply";
-import { AIConvertTaskButton } from "@/components/feedback/ai-convert-task-button";
 import { AIBadge } from "@/components/ai/ai-badge";
 import { CommentForm } from "@/components/feedback/comment-form";
 import { SyncGitHubCommentsButton } from "@/components/feedback/sync-github-comments-button";
@@ -80,6 +80,7 @@ interface FeedbackDetailProps {
     };
 }
 
+// Force hydration update
 export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
     const [isPending, startTransition] = useTransition();
 
@@ -89,88 +90,190 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
         });
     }
 
+    const [isCreatingTask, setIsCreatingTask] = useState(false);
+
     async function handleCreateTask() {
+        if (isCreatingTask) return;
+
+        setIsCreatingTask(true);
         try {
             await createTaskFromFeedback(feedback.id);
             toast.success("Task created successfully");
         } catch (error) {
             toast.error("Failed to create task");
+        } finally {
+            setIsCreatingTask(false);
         }
     }
 
+    const copyId = async () => {
+        await navigator.clipboard.writeText(feedback.id);
+        toast.success("Feedback ID copied");
+    };
+
     return (
-        <>
-            <div className="flex items-center gap-3">
-                <Button variant="ghost" size="sm" asChild>
-                    <Link href="/feedback">
-                        <ArrowLeft className="h-4 w-4 mr-1" /> Back
-                    </Link>
-                </Button>
+        <div className="space-y-6">
+            {/* Header Section */}
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Link href="/feedback" className="hover:text-foreground hover:underline flex items-center gap-1">
+                            <ArrowLeft className="h-3 w-3" />
+                            Feedback
+                        </Link>
+                        <span>/</span>
+                        <span className="font-mono text-xs">{feedback.id.substring(0, 8)}...</span>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4 text-muted-foreground hover:text-foreground"
+                            onClick={copyId}
+                            title="Copy Feedback ID"
+                        >
+                            <Copy className="h-2.5 w-2.5" />
+                            <span className="sr-only">Copy ID</span>
+                        </Button>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        {TYPE_ICONS[feedback.type] || <Bug className="h-6 w-6 text-muted-foreground" />}
+                        <h1 className="text-2xl font-bold tracking-tight">{feedback.title}</h1>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Badge variant={feedback.status === "OPEN" ? "default" : "secondary"} className="capitalize">
+                        {feedback.status}
+                    </Badge>
+                    <AIBadge
+                        aiSummary={feedback.aiSummary}
+                        aiSuggestedType={feedback.aiSuggestedType}
+                        aiSuggestedPriority={feedback.aiSuggestedPriority}
+                        aiConfidence={feedback.aiConfidence}
+                    />
+                </div>
             </div>
 
+            <Separator />
+
             <div className="grid gap-6 lg:grid-cols-3">
+                {/* Main Content Column */}
                 <div className="lg:col-span-2 space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <div className="flex items-start gap-3">
-                                {TYPE_ICONS[feedback.type] || <Bug className="h-5 w-5" />}
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <CardTitle className="text-xl">{feedback.title}</CardTitle>
-                                        <AIBadge
-                                            aiSummary={feedback.aiSummary}
-                                            aiSuggestedType={feedback.aiSuggestedType}
-                                            aiSuggestedPriority={feedback.aiSuggestedPriority}
-                                            aiConfidence={feedback.aiConfidence}
-                                        />
-                                    </div>
-                                    <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                                        <Clock className="h-3 w-3" />
-                                        {format(new Date(feedback.createdAt), "MMM d, yyyy 'at' h:mm a")}
-                                        <span>·</span>
-                                        <span className="capitalize">via {feedback.source}</span>
-                                    </div>
-                                </div>
+                    {/* Description Card */}
+                    <Card className="border-none shadow-none bg-transparent">
+                        <CardHeader className="px-0 pt-0">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                    <Clock className="h-3.5 w-3.5" />
+                                    {format(new Date(feedback.createdAt), "PPP p")}
+                                </span>
+                                <span>•</span>
+                                <span className="flex items-center gap-1 capitalize">
+                                    via {feedback.source}
+                                </span>
                             </div>
                         </CardHeader>
-                        <CardContent>
-                            <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                        <CardContent className="px-0">
+                            <div className="prose prose-sm dark:prose-invert max-w-none text-foreground leading-relaxed whitespace-pre-wrap">
                                 {feedback.description}
-                            </p>
+                            </div>
 
                             {Boolean(feedback.metadata) && (
-                                <>
-                                    <Separator className="my-4" />
-                                    <div>
-                                        <h4 className="text-sm font-medium mb-2">Metadata</h4>
-                                        <pre className="rounded bg-muted p-3 text-xs overflow-auto">
-                                            {JSON.stringify(feedback.metadata, null, 2)}
-                                        </pre>
-                                    </div>
-                                </>
+                                <div className="mt-6 rounded-lg border bg-muted/50 p-4">
+                                    <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Metadata</h4>
+                                    <pre className="text-xs font-mono overflow-auto">
+                                        {JSON.stringify(feedback.metadata, null, 2)}
+                                    </pre>
+                                </div>
                             )}
                         </CardContent>
                     </Card>
 
+                    {/* AI Analysis Card */}
+                    {(feedback.aiSummary || feedback.agentPrompt) && (
+                        <Card className="bg-violet-50/50 dark:bg-violet-950/10 border-violet-100 dark:border-violet-900/50">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-base flex items-center gap-2 text-violet-700 dark:text-violet-300">
+                                    <Bot className="h-4 w-4" />
+                                    AI Analysis
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-5">
+                                <div className="grid gap-4 sm:grid-cols-3">
+                                    <div className="space-y-1 rounded-md bg-white/50 dark:bg-black/20 p-2.5">
+                                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                                            <Target className="h-3.5 w-3.5" /> Suggested Type
+                                        </label>
+                                        <p className="text-sm font-semibold capitalize pl-5">
+                                            {feedback.aiSuggestedType || "N/A"}
+                                        </p>
+                                    </div>
+                                    <div className="space-y-1 rounded-md bg-white/50 dark:bg-black/20 p-2.5">
+                                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                                            <Zap className="h-3.5 w-3.5" /> Suggested Priority
+                                        </label>
+                                        <p className="text-sm font-semibold capitalize pl-5">
+                                            {feedback.aiSuggestedPriority || "N/A"}
+                                        </p>
+                                    </div>
+                                    <div className="space-y-1 rounded-md bg-white/50 dark:bg-black/20 p-2.5">
+                                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                                            <BarChart3 className="h-3.5 w-3.5" /> Confidence
+                                        </label>
+                                        <p className="text-sm font-semibold pl-5">
+                                            {feedback.aiConfidence
+                                                ? `${Math.round(feedback.aiConfidence * 100)}%`
+                                                : "N/A"}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {feedback.aiSummary && (
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                                            <Sparkles className="h-3.5 w-3.5 text-violet-500" /> Analysis Summary
+                                        </label>
+                                        <div className="text-sm leading-relaxed p-3 rounded-md border border-violet-100 dark:border-violet-900/50 bg-white/50 dark:bg-black/20">
+                                            {feedback.aiSummary}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {feedback.agentPrompt && (
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                                            <MessageSquareQuote className="h-3.5 w-3.5" /> Agent Prompt
+                                        </label>
+                                        <div className="rounded-md bg-muted/50 p-3 border">
+                                            <pre className="text-xs whitespace-pre-wrap font-mono text-muted-foreground overflow-auto max-h-[150px]">
+                                                {feedback.agentPrompt}
+                                            </pre>
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+
+
+
+                    {/* Comments Section */}
                     <Card>
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-base">Comments ({feedback.comments.length})</CardTitle>
-                                <SyncGitHubCommentsButton
-                                    feedbackId={feedback.id}
-                                    hasGitHubIssue={Boolean(feedback.githubIssueNumber)}
-                                />
-                            </div>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                            <CardTitle className="text-base font-medium flex items-center gap-2">
+                                <MessageSquareQuote className="h-4 w-4" />
+                                Comments
+                                <Badge variant="secondary" className="ml-1 rounded-full px-2 py-0.5 text-xs font-normal">
+                                    {feedback.comments.length}
+                                </Badge>
+                            </CardTitle>
+                            <SyncGitHubCommentsButton
+                                feedbackId={feedback.id}
+                                hasGitHubIssue={Boolean(feedback.githubIssueNumber)}
+                            />
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            {feedback.comments.length === 0 && (
-                                <p className="text-sm text-muted-foreground text-center py-4">
-                                    No comments yet. Be the first to comment!
-                                </p>
-                            )}
+                        <CardContent className="space-y-6">
                             {feedback.comments.map((comment) => (
-                                <div key={comment.id} className="flex gap-3">
-                                    <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium ${comment.isFromGitHub
+                                <div key={comment.id} className="group flex gap-4">
+                                    <div className={`flex-shrink-0 h-8 w-8 items-center justify-center rounded-full text-xs font-medium ring-2 ring-background ${comment.isFromGitHub
                                         ? "bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900"
                                         : "bg-primary text-primary-foreground"
                                         }`}>
@@ -180,13 +283,13 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
                                             comment.user.name.charAt(0).toUpperCase()
                                         )}
                                     </div>
-                                    <div className="flex-1">
+                                    <div className="flex-1 space-y-1.5">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-sm font-medium">
+                                            <span className="text-sm font-semibold text-foreground">
                                                 {comment.user.name}
                                             </span>
                                             {comment.isFromGitHub && (
-                                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5">
+                                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 font-normal">
                                                     <Github className="h-2.5 w-2.5" />
                                                     GitHub
                                                 </Badge>
@@ -195,102 +298,40 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
                                                 {format(new Date(comment.createdAt), "MMM d, yyyy 'at' h:mm a")}
                                             </span>
                                         </div>
-                                        <p className="text-sm mt-1 whitespace-pre-wrap">{comment.content}</p>
+                                        <div className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                                            {comment.content}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
 
-                            <Separator className="my-2" />
+                            {feedback.comments.length === 0 && (
+                                <div className="text-center py-8 text-sm text-muted-foreground bg-muted/20 rounded-lg border border-dashed">
+                                    No comments yet. Start the conversation!
+                                </div>
+                            )}
 
-                            {/* Comment Form */}
+                            <Separator />
                             <CommentForm feedbackId={feedback.id} />
                         </CardContent>
                     </Card>
-
-                    {/* AI Suggested Reply */}
-                    <AISuggestedReply feedbackId={feedback.id} />
-
-                    {/* AI Analysis Details */}
-                    {(feedback.aiSummary || feedback.agentPrompt) && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-base flex items-center gap-2">
-                                    <Bot className="h-4 w-4 text-purple-500" />
-                                    AI Analysis Details
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                                            <Target className="h-3 w-3" /> Suggested Type
-                                        </label>
-                                        <p className="text-sm font-medium capitalize">
-                                            {feedback.aiSuggestedType || "N/A"}
-                                        </p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                                            <BarChart3 className="h-3 w-3" /> Confidence Score
-                                        </label>
-                                        <p className="text-sm font-medium">
-                                            {feedback.aiConfidence
-                                                ? `${Math.round(feedback.aiConfidence * 100)}%`
-                                                : "N/A"}
-                                        </p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                                            <Zap className="h-3 w-3" /> Suggested Priority
-                                        </label>
-                                        <p className="text-sm font-medium capitalize">
-                                            {feedback.aiSuggestedPriority || "N/A"}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {feedback.aiSummary && (
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                                            <Sparkles className="h-3 w-3" /> Analysis Summary
-                                        </label>
-                                        <div className="rounded-md bg-muted/50 p-3 text-sm leading-relaxed">
-                                            {feedback.aiSummary}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {feedback.agentPrompt && (
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                                            <MessageSquareQuote className="h-3 w-3" /> Agent Prompt Used
-                                        </label>
-                                        <div className="rounded-md bg-muted p-3">
-                                            <pre className="text-xs whitespace-pre-wrap font-mono text-muted-foreground overflow-auto max-h-[200px]">
-                                                {feedback.agentPrompt}
-                                            </pre>
-                                        </div>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    )}
                 </div>
 
-                <div className="space-y-4">
+                {/* Sidebar Column */}
+                <div className="space-y-6">
                     <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">Details</CardTitle>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Details</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div>
-                                <label className="text-xs font-medium text-muted-foreground">Status</label>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-medium">Status</label>
                                 <Select
                                     value={feedback.status.toLowerCase()}
                                     onValueChange={handleStatusChange}
                                     disabled={isPending}
                                 >
-                                    <SelectTrigger className="mt-1">
+                                    <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -301,85 +342,121 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div>
-                                <label className="text-xs font-medium text-muted-foreground">Priority</label>
-                                <p className="mt-1 capitalize text-sm">{feedback.priority}</p>
-                            </div>
-                            <div>
-                                <label className="text-xs font-medium text-muted-foreground">Type</label>
-                                <p className="mt-1 capitalize text-sm">{feedback.type}</p>
-                            </div>
+
                             <Separator />
-                            <div>
-                                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                                    <FolderGit2 className="h-3 w-3" /> Project
-                                </label>
-                                <p className="mt-1 text-sm">{feedback.project.name}</p>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium">Priority</label>
+                                    <div className="text-sm font-medium capitalize flex items-center gap-2">
+                                        {feedback.priority === 'high' || feedback.priority === 'critical' ? (
+                                            <Badge variant="destructive" className="capitalize">{feedback.priority}</Badge>
+                                        ) : (
+                                            <span className="capitalize">{feedback.priority}</span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium">Type</label>
+                                    <div className="text-sm capitalize flex items-center gap-2">
+                                        {TYPE_ICONS[feedback.type]}
+                                        {feedback.type}
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                                    <User className="h-3 w-3" /> Assignee
-                                </label>
-                                <p className="mt-1 text-sm">
-                                    {feedback.assignee?.name || "Unassigned"}
-                                </p>
+
+                            <Separator />
+
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground flex items-center gap-2">
+                                        <FolderGit2 className="h-3.5 w-3.5" /> Project
+                                    </span>
+                                    <span className="font-medium truncate max-w-[120px]" title={feedback.project.name}>
+                                        {feedback.project.name}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground flex items-center gap-2">
+                                        <User className="h-3.5 w-3.5" /> Assignee
+                                    </span>
+                                    <span className="font-medium">
+                                        {feedback.assignee?.name || "Unassigned"}
+                                    </span>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* GitHub Issue Link */}
+                    {/* Actions Card */}
                     <Card>
-                        <CardContent className="pt-6">
-                            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                                <Github className="h-3 w-3" /> GitHub Issue
-                            </label>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Actions</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            {/* Manual Task Creation */}
+                            <Button
+                                onClick={handleCreateTask}
+                                className="w-full gap-2 justify-start"
+                                variant="outline"
+                                disabled={isCreatingTask}
+                            >
+                                {isCreatingTask ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <ClipboardList className="h-4 w-4" />
+                                )}
+                                {isCreatingTask ? "Creating Task..." : "Create Task manually"}
+                            </Button>
+
+
+
+                            {/* GitHub Issue Link */}
                             {feedback.githubIssueNumber && feedback.githubUrl ? (
-                                <a
-                                    href={feedback.githubUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="mt-2 flex items-center gap-2 rounded-lg border p-3 text-sm font-medium hover:bg-muted transition-colors"
+                                <Button
+                                    asChild
+                                    variant="secondary"
+                                    className="w-full gap-2 justify-start"
                                 >
-                                    <Github className="h-4 w-4" />
-                                    <span>Issue #{feedback.githubIssueNumber}</span>
-                                    <ExternalLink className="h-3 w-3 ml-auto text-muted-foreground" />
-                                </a>
+                                    <a
+                                        href={feedback.githubUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        <Github className="h-4 w-4" />
+                                        <span>View Issue #{feedback.githubIssueNumber}</span>
+                                        <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
+                                    </a>
+                                </Button>
                             ) : (
-                                <p className="mt-1 text-sm text-muted-foreground">Not synced to GitHub</p>
+                                <p className="text-xs text-center text-muted-foreground pt-2">
+                                    Not synced to GitHub
+                                </p>
                             )}
                         </CardContent>
                     </Card>
 
-                    {/* Manual Task Creation */}
-                    <Button onClick={handleCreateTask} className="w-full gap-2" variant="outline">
-                        <ClipboardList className="h-4 w-4" />
-                        Assign to Task
-                    </Button>
-
-                    {/* AI Convert to Task */}
-                    <div className="flex">
-                        <AIConvertTaskButton feedbackId={feedback.id} feedbackTitle={feedback.title} />
-                    </div>
-
                     {feedback.tasks.length > 0 && (
                         <Card>
-                            <CardHeader>
-                                <CardTitle className="text-base">Linked Tasks</CardTitle>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Linked Tasks</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
                                 {feedback.tasks.map((task) => (
-                                    <div key={task.id} className="flex items-center justify-between rounded-lg border p-2">
-                                        <span className="text-sm">{task.title}</span>
-                                        <Badge variant="outline" className="text-xs capitalize">
-                                            {task.status}
-                                        </Badge>
-                                    </div>
+                                    <Link key={task.id} href={`/tasks?taskId=${task.id}`} className="block">
+                                        <div className="flex items-center justify-between rounded-lg border p-2.5 hover:bg-muted/50 transition-colors">
+                                            <span className="text-sm font-medium truncate max-w-[140px]">{task.title}</span>
+                                            <Badge variant="outline" className="text-[10px] capitalize px-1.5 h-5">
+                                                {task.status}
+                                            </Badge>
+                                        </div>
+                                    </Link>
                                 ))}
                             </CardContent>
                         </Card>
                     )}
                 </div>
             </div>
-        </>
+        </div>
     );
 }
