@@ -20,6 +20,7 @@ model User {
   tasks        Task[]
   comments     Comment[]
   chatMessages ChatMessage[]
+  chatThreads  ChatThread[]
 
   @@index([email])
 }
@@ -40,6 +41,7 @@ model Project {
   feedbacks    Feedback[]
   tasks        Task[]
   chatMessages ChatMessage[]
+  chatThreads  ChatThread[]
 
   @@index([slug])
   @@index([apiKey])
@@ -106,6 +108,7 @@ model Task {
 
   comments     Comment[]
   chatMessages ChatMessage[]
+  chatThreads  ChatThread[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -155,6 +158,9 @@ model ChatMessage {
   role    String // "user" | "assistant"
   content String @db.Text
 
+  threadId String?
+  thread   ChatThread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
   taskId    String?
   task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
   projectId String?
@@ -168,4 +174,28 @@ model ChatMessage {
   @@index([taskId])
   @@index([projectId])
   @@index([userId])
+  @@index([threadId])
+}
+
+model ChatThread {
+  id    String @id
+  title String @default("New Chat")
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  taskId String?
+  task   Task?  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  messages ChatMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([taskId])
+  @@index([projectId])
 }

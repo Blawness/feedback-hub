@@ -1,3 +1,5 @@
+"use client";
+
 import {
   ComposerAddAttachment,
   ComposerAttachments,
@@ -16,7 +18,11 @@ import {
   ComposerPrimitive,
   ErrorPrimitive,
   MessagePrimitive,
+  ThreadListItemPrimitive,
+  ThreadListPrimitive,
   ThreadPrimitive,
+  useAui,
+  useAuiEvent,
 } from "@assistant-ui/react";
 import {
   ArrowDownIcon,
@@ -26,12 +32,14 @@ import {
   ChevronRightIcon,
   CopyIcon,
   DownloadIcon,
+  HistoryIcon,
   MoreHorizontalIcon,
   PencilIcon,
+  PlusIcon,
   RefreshCwIcon,
   SquareIcon,
 } from "lucide-react";
-import type { FC } from "react";
+import { type FC, useState } from "react";
 
 const STARTER_SUGGESTIONS = [
   {
@@ -57,6 +65,8 @@ const STARTER_SUGGESTIONS = [
 ] as const;
 
 export const Thread: FC = () => {
+  const [showHistory, setShowHistory] = useState(false);
+
   return (
     <ThreadPrimitive.Root
       className="aui-root aui-thread-root @container flex h-full flex-col bg-background"
@@ -64,6 +74,41 @@ export const Thread: FC = () => {
         ["--thread-max-width" as string]: "44rem",
       }}
     >
+      <ThreadAutoTitle />
+      <div className="mx-auto flex w-full max-w-(--thread-max-width) items-center justify-between gap-2 px-4 pt-3 pb-2">
+        <div className="text-sm font-medium text-foreground">AI Assistant</div>
+        <div className="flex items-center gap-2">
+          <ThreadListPrimitive.New asChild>
+            <Button size="sm" variant="outline" className="gap-1.5">
+              <PlusIcon className="size-4" />
+              New Chat
+            </Button>
+          </ThreadListPrimitive.New>
+          <Button
+            type="button"
+            size="sm"
+            variant={showHistory ? "secondary" : "outline"}
+            className="gap-1.5"
+            onClick={() => setShowHistory((prev) => !prev)}
+          >
+            <HistoryIcon className="size-4" />
+            History
+          </Button>
+        </div>
+      </div>
+
+      {showHistory && (
+        <ThreadListPrimitive.Root className="mx-auto mb-2 w-full max-w-(--thread-max-width) px-4">
+          <div className="max-h-44 space-y-1 overflow-y-auto rounded-lg border bg-muted/30 p-2">
+            <ThreadListPrimitive.Items
+              components={{
+                ThreadListItem: ThreadHistoryItem,
+              }}
+            />
+          </div>
+        </ThreadListPrimitive.Root>
+      )}
+
       <ThreadPrimitive.Viewport
         turnAnchor="top"
         className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth px-4 pt-4"
@@ -86,6 +131,75 @@ export const Thread: FC = () => {
         </ThreadPrimitive.ViewportFooter>
       </ThreadPrimitive.Viewport>
     </ThreadPrimitive.Root>
+  );
+};
+
+const ThreadAutoTitle: FC = () => {
+  const aui = useAui();
+
+  const makeTitle = (raw: string) => {
+    const cleaned = raw.replace(/\s+/g, " ").trim();
+    if (!cleaned) return "New Chat";
+    const words = cleaned.split(" ").slice(0, 8).join(" ");
+    return words.length > 60 ? `${words.slice(0, 57).trim()}...` : words;
+  };
+
+  const getFirstUserMessageText = () => {
+    const messages = aui.threads().thread("main").getState().messages;
+    for (const msg of messages) {
+      if (msg.role !== "user") continue;
+      const textPart = msg.content.find(
+        (part) => part.type === "text" && typeof part.text === "string",
+      );
+      if (textPart?.type === "text" && textPart.text.trim()) {
+        return textPart.text.trim();
+      }
+    }
+    return "";
+  };
+
+  const syncTitleFromFirstUserMessage = () => {
+    try {
+      const item = aui.threads().item("main");
+      const title = item.getState().title?.trim();
+      if (title && title !== "New Chat") return;
+
+      const firstUserText = getFirstUserMessageText();
+      if (!firstUserText) return;
+
+      item.rename(makeTitle(firstUserText));
+    } catch {
+      // ignore when thread state is not initialized yet
+    }
+  };
+
+  useAuiEvent("composer.send", () => {
+    setTimeout(syncTitleFromFirstUserMessage, 0);
+  });
+
+  useAuiEvent("thread.runStart", () => {
+    setTimeout(syncTitleFromFirstUserMessage, 0);
+  });
+
+  useAuiEvent("thread.runEnd", () => {
+    setTimeout(syncTitleFromFirstUserMessage, 0);
+  });
+
+  return null;
+};
+
+const ThreadHistoryItem: FC = () => {
+  return (
+    <ThreadListItemPrimitive.Root className="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent">
+      <ThreadListItemPrimitive.Trigger asChild>
+        <button
+          type="button"
+          className="min-w-0 flex-1 truncate text-left text-sm text-foreground"
+        >
+          <ThreadListItemPrimitive.Title fallback="New Chat" />
+        </button>
+      </ThreadListItemPrimitive.Trigger>
+    </ThreadListItemPrimitive.Root>
   );
 };
 

@@ -20,6 +20,21 @@ type FrontendToolsPayload = Record<
     }
 >;
 
+function generateChatTitle(text: string) {
+    const cleaned = text
+        .replace(/[`*_>#-]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    if (!cleaned) return "New Chat";
+
+    const words = cleaned.split(" ").slice(0, 8);
+    let title = words.join(" ");
+    if (title.length > 60) {
+        title = `${title.slice(0, 57).trim()}...`;
+    }
+    return title;
+}
+
 async function resolveSessionUserId(sessionUser: {
     id?: string | null;
     email?: string | null;
@@ -72,6 +87,15 @@ function getLatestUserMessage(messages: UIMessage[]) {
         const message = messages[i];
         if (message.role !== "user") continue;
 
+        const text = extractUserText(message);
+        if (text) return text;
+    }
+    return "";
+}
+
+function getFirstUserMessage(messages: UIMessage[]) {
+    for (const message of messages) {
+        if (message.role !== "user") continue;
         const text = extractUserText(message);
         if (text) return text;
     }
@@ -272,11 +296,15 @@ export async function POST(req: Request) {
         }
 
         const body = (await req.json()) as {
+            id?: string;
             messages?: UIMessage[];
             context?: ChatContext;
             system?: string;
             tools?: FrontendToolsPayload;
         };
+        const threadId = typeof body.id === "string" && body.id.trim()
+            ? body.id.trim()
+            : undefined;
         const messages = body.messages ?? [];
         const context = body.context ?? {};
         const taskId = context.taskId;
@@ -295,11 +323,47 @@ export async function POST(req: Request) {
         const google = createGoogleGenerativeAI({ apiKey: googleApiKey });
 
         const latestUserMessage = getLatestUserMessage(messages);
+        const firstUserMessage = getFirstUserMessage(messages);
+        const candidateThreadTitle = generateChatTitle(
+            latestUserMessage || firstUserMessage
+        );
+        if (threadId) {
+            const existingThread = await prisma.chatThread.findUnique({
+                where: { id: threadId },
+                select: { id: true, userId: true, title: true },
+            });
+
+            if (existingThread && existingThread.userId !== userId) {
+                return new Response("Forbidden", { status: 403 });
+            }
+
+            if (!existingThread) {
+                await prisma.chatThread.create({
+                    data: {
+                        id: threadId,
+                        title: candidateThreadTitle,
+                        userId,
+                        taskId,
+                        projectId,
+                    },
+                });
+            } else if (
+                candidateThreadTitle &&
+                (!existingThread.title || existingThread.title === "New Chat")
+            ) {
+                await prisma.chatThread.update({
+                    where: { id: threadId },
+                    data: { title: candidateThreadTitle },
+                });
+            }
+        }
+
         if (latestUserMessage) {
             await prisma.chatMessage.create({
                 data: {
                     role: "user",
                     content: latestUserMessage,
+                    threadId,
                     userId,
                     taskId,
                     projectId,
@@ -331,6 +395,7 @@ export async function POST(req: Request) {
                     data: {
                         role: "assistant",
                         content,
+                        threadId,
                         userId,
                         taskId,
                         projectId,
