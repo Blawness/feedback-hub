@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { getAiConfig } from "@/lib/ai/gemini";
 import { prisma } from "@/lib/prisma";
 import { frontendTools } from "@assistant-ui/react-ai-sdk";
-import { google } from "@ai-sdk/google";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 
 export const maxDuration = 60; // Allow longer generation times
@@ -19,6 +19,29 @@ type FrontendToolsPayload = Record<
         parameters: Record<string, unknown>;
     }
 >;
+
+async function resolveSessionUserId(sessionUser: {
+    id?: string | null;
+    email?: string | null;
+}) {
+    if (sessionUser.id) {
+        const userById = await prisma.user.findUnique({
+            where: { id: sessionUser.id },
+            select: { id: true },
+        });
+        if (userById) return userById.id;
+    }
+
+    if (sessionUser.email) {
+        const userByEmail = await prisma.user.findUnique({
+            where: { email: sessionUser.email },
+            select: { id: true },
+        });
+        if (userByEmail) return userByEmail.id;
+    }
+
+    return null;
+}
 
 function extractUserText(message: UIMessage) {
     const chunks: string[] = [];
@@ -55,6 +78,116 @@ function getLatestUserMessage(messages: UIMessage[]) {
     return "";
 }
 
+function formatGroupCounts(
+    rows: Array<{
+        _count: { _all: number };
+        [key: string]: string | { _all: number };
+    }>,
+    key: string
+) {
+    if (rows.length === 0) return "none";
+    return rows
+        .map((row) => `${String(row[key])}: ${row._count._all}`)
+        .join(", ");
+}
+
+async function buildGlobalAppContext(projectId?: string) {
+    const feedbackWhere = projectId ? { projectId } : undefined;
+    const taskWhere = projectId ? { projectId } : undefined;
+
+    const [
+        totalProjects,
+        activeProjects,
+        feedbackTotal,
+        taskTotal,
+        feedbackByStatus,
+        feedbackByPriority,
+        taskByStatus,
+        recentFeedback,
+        recentTasks,
+    ] = await Promise.all([
+        prisma.project.count(),
+        prisma.project.count({ where: { isActive: true } }),
+        prisma.feedback.count({ where: feedbackWhere }),
+        prisma.task.count({ where: taskWhere }),
+        prisma.feedback.groupBy({
+            by: ["status"],
+            where: feedbackWhere,
+            _count: { _all: true },
+        }),
+        prisma.feedback.groupBy({
+            by: ["priority"],
+            where: feedbackWhere,
+            _count: { _all: true },
+        }),
+        prisma.task.groupBy({
+            by: ["status"],
+            where: taskWhere,
+            _count: { _all: true },
+        }),
+        prisma.feedback.findMany({
+            where: feedbackWhere,
+            take: 12,
+            orderBy: { updatedAt: "desc" },
+            select: {
+                id: true,
+                title: true,
+                type: true,
+                priority: true,
+                status: true,
+                project: { select: { name: true } },
+            },
+        }),
+        prisma.task.findMany({
+            where: taskWhere,
+            take: 12,
+            orderBy: { updatedAt: "desc" },
+            select: {
+                id: true,
+                title: true,
+                status: true,
+                priority: true,
+                project: { select: { name: true } },
+            },
+        }),
+    ]);
+
+    const recentFeedbackText =
+        recentFeedback.length === 0
+            ? "- none"
+            : recentFeedback
+                .map(
+                    (f) =>
+                        `- [${f.id}] [${f.project.name}] [${f.status}] [${f.type}] [${f.priority}] ${f.title}`
+                )
+                .join("\n");
+    const recentTaskText =
+        recentTasks.length === 0
+            ? "- none"
+            : recentTasks
+                .map(
+                    (t) =>
+                        `- [${t.id}] [${t.project.name}] [${t.status}] [${t.priority}] ${t.title}`
+                )
+                .join("\n");
+
+    return `
+Application Data Snapshot (${new Date().toISOString()}):
+- Projects: ${totalProjects} total (${activeProjects} active)
+- Feedback: ${feedbackTotal}
+- Tasks: ${taskTotal}
+- Feedback by status: ${formatGroupCounts(feedbackByStatus, "status")}
+- Feedback by priority: ${formatGroupCounts(feedbackByPriority, "priority")}
+- Task by status: ${formatGroupCounts(taskByStatus, "status")}
+
+Recent Feedback:
+${recentFeedbackText}
+
+Recent Tasks:
+${recentTaskText}
+`;
+}
+
 async function buildSystemPrompt({
     baseSystemPrompt,
     context,
@@ -64,6 +197,14 @@ async function buildSystemPrompt({
 }) {
     const { taskId, projectId } = context;
     let systemPrompt = baseSystemPrompt;
+    const globalContext = await buildGlobalAppContext(projectId);
+    systemPrompt += `\n\n${globalContext}`;
+    systemPrompt += `\n\nAssistant behavior rules:
+- You are the AI copilot for Feedback Hub, and must ground answers in the context snapshot above.
+- Prefer concrete references (IDs, titles, statuses, priorities) when giving analysis or recommendations.
+- If context is insufficient for a precise answer, explicitly say what is missing and ask a focused follow-up question.
+- Never invent projects, feedback, tasks, IDs, or statuses that are not present in the supplied context.
+- Keep responses concise and actionable.`;
 
     if (taskId) {
         const task = await prisma.task.findUnique({
@@ -126,7 +267,7 @@ ${task.comments.map((c) => `- ${c.user.name}: ${c.content}`).join("\n")}
 export async function POST(req: Request) {
     try {
         const session = await auth();
-        if (!session?.user?.id) {
+        if (!session?.user) {
             return new Response("Unauthorized", { status: 401 });
         }
 
@@ -140,9 +281,19 @@ export async function POST(req: Request) {
         const context = body.context ?? {};
         const taskId = context.taskId;
         const projectId = context.projectId;
-        const userId = session.user.id;
+        const userId = await resolveSessionUserId(session.user);
+        if (!userId) {
+            return new Response("Unauthorized", { status: 401 });
+        }
 
         const config = await getAiConfig();
+        const googleApiKey =
+            process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? process.env.GEMINI_API_KEY;
+        if (!googleApiKey) {
+            return new Response("AI configuration missing", { status: 500 });
+        }
+        const google = createGoogleGenerativeAI({ apiKey: googleApiKey });
+
         const latestUserMessage = getLatestUserMessage(messages);
         if (latestUserMessage) {
             await prisma.chatMessage.create({

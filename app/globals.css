@@ -126,3 +126,15 @@
     @apply bg-background text-foreground;
   }
 }
+
+.aui-markdown pre {
+  @apply overflow-x-auto rounded-lg bg-zinc-900 p-3 text-zinc-100;
+}
+
+.aui-markdown code {
+  @apply rounded bg-zinc-200/70 px-1 py-0.5 text-xs dark:bg-zinc-800;
+}
+
+.aui-markdown pre code {
+  @apply bg-transparent p-0 text-inherit;
+}
