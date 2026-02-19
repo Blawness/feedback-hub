@@ -109,6 +109,7 @@ export function TaskAIChat({ taskId, taskTitle }: TaskAIChatProps) {
                             key={msg.id || i}
                             role={msg.role}
                             content={msg.content}
+                            taskId={taskId}
                         />
                     ))}
 

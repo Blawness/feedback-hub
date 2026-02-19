@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth";
 
 // ─── Get Chat History ────────────────────────────────────────
 
@@ -94,24 +94,31 @@ export async function saveChatMessages({
     taskId,
     projectId,
 }: {
-    messages: { role: "user" | "assistant"; content: string }[];
+    messages: { role: "user" | "assistant"; content: string; taskId?: string; projectId?: string }[];
     taskId?: string;
     projectId?: string;
 }) {
     const session = await auth();
-    if (!session?.user?.id) return { error: "Not authenticated" };
+    if (!session?.user?.id) {
+        return { error: "Not authenticated" };
+    }
 
-    await prisma.chatMessage.createMany({
-        data: messages.map((m) => ({
-            role: m.role,
-            content: m.content,
-            taskId: taskId || null,
-            projectId: projectId || null,
-            userId: session.user.id,
-        })),
-    });
-
-    return { success: true };
+    try {
+        const userId = session.user.id;
+        await prisma.chatMessage.createMany({
+            data: messages.map((msg) => ({
+                role: msg.role,
+                content: msg.content,
+                userId: userId,
+                taskId: msg.taskId || taskId || null,
+                projectId: msg.projectId || projectId || null,
+            })),
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Error saving chat messages:", error);
+        return { error: "Failed to save messages" };
+    }
 }
 
 // ─── Clear Chat History ──────────────────────────────────────

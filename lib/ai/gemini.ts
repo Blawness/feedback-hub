@@ -4,7 +4,7 @@ import { getTemplateById } from "@/lib/ai/prompt-templates";
 
 const apiKey = process.env.GEMINI_API_KEY;
 
-function createGeminiClient() {
+export function createGeminiClient() {
     if (!apiKey) {
         console.warn("GEMINI_API_KEY is not set. AI features will be disabled.");
         return null;

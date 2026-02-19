@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth";
 import { createGeminiClient, getAiConfig } from "@/lib/ai/gemini";
 import { prisma } from "@/lib/prisma";
 
@@ -82,12 +82,14 @@ ${task.comments.map(c => `- ${c.user.name}: ${c.content}`).join("\n")}
             return new Response("AI configuration missing", { status: 500 });
         }
 
+        const userId = session.user.id;
+
         // 3. Save User Message to DB immediately
         await prisma.chatMessage.create({
             data: {
                 role: "user",
                 content: message,
-                userId: session.user.id,
+                userId,
                 taskId,
                 projectId,
             },
@@ -119,8 +121,9 @@ ${task.comments.map(c => `- ${c.user.name}: ${c.content}`).join("\n")}
                 let fullResponse = "";
 
                 try {
-                    for await (const chunk of geminiStream.stream) {
-                        const text = chunk.text();
+                    // Fix: Iterate over geminiStream directly if it's an AsyncGenerator
+                    for await (const chunk of geminiStream) {
+                        const text = chunk.text; // Access as property/getter, not function
                         if (text) {
                             fullResponse += text;
                             controller.enqueue(encoder.encode(text));
@@ -133,7 +136,7 @@ ${task.comments.map(c => `- ${c.user.name}: ${c.content}`).join("\n")}
                             data: {
                                 role: "assistant",
                                 content: fullResponse,
-                                userId: session.user.id,
+                                userId,
                                 taskId,
                                 projectId,
                             },
