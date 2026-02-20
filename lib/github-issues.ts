@@ -102,12 +102,20 @@ export async function syncGitHubIssueState(
             ? "closed"
             : "open";
 
+    let state_reason: "completed" | "not_planned" | "reopened" | undefined;
+
+    if (state === "closed") {
+        state_reason = feedbackStatus === "RESOLVED" ? "completed" : "not_planned";
+    } else {
+        state_reason = "reopened";
+    }
+
     await octokit.rest.issues.update({
         owner,
         repo,
         issue_number: issueNumber,
         state,
-        ...(state === "closed" ? { state_reason: "not_planned" } : { state_reason: "reopened" }),
+        state_reason,
     } as any);
 
     return true;

@@ -41,6 +41,7 @@ export interface ChatActionHint {
 }
 
 export interface SemanticSearchResult {
-    content: string;
-    similarity: number;
+    feedbackId: string;
+    relevanceScore: number;
+    reason: string;
 }

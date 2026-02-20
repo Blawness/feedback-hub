@@ -60,14 +60,46 @@ export async function createTask(formData: FormData) {
 }
 
 
+
 export async function updateTaskStatus(id: string, status: string) {
+    const task = await prisma.task.findUnique({
+        where: { id },
+        include: {
+            feedback: true,
+            project: true,
+        },
+    });
+
+    if (!task) return;
+
     await prisma.task.update({
         where: { id },
         data: { status },
     });
 
+    // If task is moved to done, resolve the associated feedback and sync with GitHub
+    if (status === "done" && task.feedbackId && task.feedback) {
+        // Update feedback status to RESOLVED
+        await prisma.feedback.update({
+            where: { id: task.feedbackId },
+            data: { status: "RESOLVED" },
+        });
+
+        // Sync with GitHub if applicable
+        if (task.feedback.githubIssueNumber && task.project.githubRepoFullName) {
+            const { syncGitHubIssueState } = await import("@/lib/github-issues");
+            await syncGitHubIssueState(
+                { githubRepoFullName: task.project.githubRepoFullName },
+                task.feedback.githubIssueNumber,
+                "RESOLVED"
+            );
+        }
+    }
+
     revalidatePath("/tasks");
+    revalidatePath("/feedback");
 }
+
 
 export async function deleteTask(id: string) {
     try {

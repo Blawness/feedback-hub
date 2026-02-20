@@ -109,6 +109,7 @@ export function TaskBoard({ tasks: initialTasks, projects }: { tasks: Task[]; pr
     const [tasks, setTasks] = useState<Task[]>(initialTasks);
     const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
     const [initialStatus, setInitialStatus] = useState<string | null>(null);
+    const [pendingDoneTask, setPendingDoneTask] = useState<{ id: string, newStatus: string, originalStatus: string } | null>(null);
     const [isPending, startTransition] = useTransition();
 
     // Sync state with props if initialTasks change (e.g. from server revalidation)
@@ -211,14 +212,43 @@ export function TaskBoard({ tasks: initialTasks, projects }: { tasks: Task[]; pr
                 const taskId = active.id as string;
                 const newStatus = overContainer as string;
 
-                startTransition(async () => {
-                    await updateTaskStatus(taskId, newStatus);
-                });
+                if (newStatus === "done") {
+                    setPendingDoneTask({ id: taskId, newStatus, originalStatus: initialStatus });
+                    // NOTE: We don't revert the optimistic update here. We let the UI show it in "Done".
+                    // If the user cancels, we will revert it using `cancelDone`.
+                } else {
+                    startTransition(async () => {
+                        await updateTaskStatus(taskId, newStatus);
+                    });
+                }
             }
         }
 
         setActiveId(null);
         setInitialStatus(null);
+    }
+
+    function confirmDone() {
+        if (!pendingDoneTask) return;
+
+        const { id, newStatus } = pendingDoneTask;
+        startTransition(async () => {
+            await updateTaskStatus(id, newStatus);
+        });
+        setPendingDoneTask(null);
+    }
+
+    function cancelDone() {
+        if (!pendingDoneTask) return;
+
+        const { id, originalStatus } = pendingDoneTask;
+
+        // Revert the optimistic update to the original status
+        setTasks((prev) =>
+            prev.map(t => t.id === id ? { ...t, status: originalStatus } : t)
+        );
+
+        setPendingDoneTask(null);
     }
 
     // Also support manual status change via Select
@@ -283,6 +313,21 @@ export function TaskBoard({ tasks: initialTasks, projects }: { tasks: Task[]; pr
                 </DragOverlay>,
                 document.body
             )}
+
+            <AlertDialog open={!!pendingDoneTask} onOpenChange={(open) => !open && cancelDone()}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Mark Task as Done?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will also mark the associated feedback as <strong>Resolved</strong> and sync this status to GitHub.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={cancelDone}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDone}>Confirm</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </DndContext>
     );
 }
