@@ -10,13 +10,15 @@ import {
     Settings,
     LogOut,
     BookText,
-    Bot
+    Bot,
+    BarChart3
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Logo } from "@/components/ui/logo";
 
 const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
+    { name: "Insights", href: "/insights", icon: BarChart3 },
     { name: "Feedback", href: "/feedback", icon: MessageSquare },
     { name: "Tasks", href: "/tasks", icon: CheckSquare },
     { name: "Projects", href: "/projects", icon: FolderGit2 },
