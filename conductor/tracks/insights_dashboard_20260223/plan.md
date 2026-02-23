@@ -35,7 +35,7 @@ This plan outlines the steps to implement the AI-powered Insights Dashboard, fol
 - [x] **Task: Update navigation and sidebar** f5f84bc
     - [ ] Add "Insights" link to `components/layout/sidebar.tsx`
     - [ ] Verify navigation works correctly
-- [ ] **Task: Implement filtering and responsiveness**
+- [x] **Task: Implement filtering and responsiveness** fc526a4
     - [ ] Add project selection filter and date range picker to the dashboard
     - [ ] Optimize the dashboard layout for mobile devices
 - [ ] **Task: Final verification and documentation**
