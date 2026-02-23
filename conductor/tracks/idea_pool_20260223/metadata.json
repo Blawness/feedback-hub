@@ -1,0 +1,8 @@
+{
+  "track_id": "idea_pool_20260223",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-02-23T14:10:00Z",
+  "updated_at": "2026-02-23T14:10:00Z",
+  "description": "buat fitur baru untuk semacam idea pool gitu, generate pake gemini api dan bisa disimpan ide yg kita suka. ide ini merupakan ide proyek dan bisa di kategorikan juga semisal : landing page, SaaS, web app dll, dan juga lengkap dengan tech stack nya"
+}
