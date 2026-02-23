@@ -14,21 +14,21 @@ This plan outlines the steps to implement the AI-powered Insights Dashboard, fol
     - [x] Verify tests pass and coverage >80%
 - [x] **Task: Conductor - User Manual Verification 'Phase 1: Data Aggregation & Logic' (Protocol in workflow.md)** 6e1053c
 
-## Phase 2: Insights UI & Visualizations
+## Phase 2: Insights UI & Visualizations [checkpoint: 4da0960]
 
 - [x] **Task: Design and implement the Insights Dashboard layout** e7618cd
-    - [ ] Write failing unit tests for the `InsightsPage` component structure
-    - [ ] Implement the base layout in `app/(dashboard)/insights/page.tsx`
-    - [ ] Verify tests pass and coverage >80%
+    - [x] Write failing unit tests for the `InsightsPage` component structure
+    - [x] Implement the base layout in `app/(dashboard)/insights/page.tsx`
+    - [x] Verify tests pass and coverage >80%
 - [x] **Task: Create visualization components** b067ad8
-    - [ ] Write failing unit tests for SentimentChart and TrendChart components
-    - [ ] Implement chart components using Tailwind and accessible SVG primitives
-    - [ ] Verify tests pass and coverage >80%
+    - [x] Write failing unit tests for SentimentChart and TrendChart components
+    - [x] Implement chart components using Tailwind and accessible SVG primitives
+    - [x] Verify tests pass and coverage >80%
 - [x] **Task: Integrate UI with Analytics API** b640050
-    - [ ] Write failing unit tests for data fetching in the Insights page
-    - [ ] Connect the dashboard charts to the aggregation Server Action
-    - [ ] Verify tests pass and coverage >80%
-- [ ] **Task: Conductor - User Manual Verification 'Phase 2: Insights UI & Visualizations' (Protocol in workflow.md)**
+    - [x] Write failing unit tests for data fetching in the Insights page
+    - [x] Connect the dashboard charts to the aggregation Server Action
+    - [x] Verify tests pass and coverage >80%
+- [x] **Task: Conductor - User Manual Verification 'Phase 2: Insights UI & Visualizations' (Protocol in workflow.md)** 4da0960
 
 ## Phase 3: Integration & Polish
 
