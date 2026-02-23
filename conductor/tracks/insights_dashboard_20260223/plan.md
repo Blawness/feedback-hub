@@ -38,7 +38,7 @@ This plan outlines the steps to implement the AI-powered Insights Dashboard, fol
 - [x] **Task: Implement filtering and responsiveness** fc526a4
     - [ ] Add project selection filter and date range picker to the dashboard
     - [ ] Optimize the dashboard layout for mobile devices
-- [ ] **Task: Final verification and documentation**
+- [~] **Task: Final verification and documentation**
     - [ ] Run full test suite and confirm >80% coverage
     - [ ] Update `README.md` or internal docs if necessary
 - [ ] **Task: Conductor - User Manual Verification 'Phase 3: Integration & Polish' (Protocol in workflow.md)**
