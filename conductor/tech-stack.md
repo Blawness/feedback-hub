@@ -7,6 +7,7 @@
 - **UI Components:** [Shadcn UI](https://ui.shadcn.com/) / [Radix UI](https://www.radix-ui.com/)
 - **State Management:** [Zustand](https://zustand-demo.pmnd.rs/) (Client) / React Server Components (Server)
 - **Data Fetching:** [TanStack Query](https://tanstack.com/query/latest) (v5)
+- **Visualizations:** [Recharts](https://recharts.org/)
 
 ## Backend & Database
 - **Runtime:** Node.js

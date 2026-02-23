@@ -16,6 +16,11 @@ To streamline the product development lifecycle by bridging the gap between user
 - **AI Analysis:** Automatically classify feedback type (Bug, Feature, Improvement), gauge sentiment, and generate summaries using Google Gemini.
 - **Organization:** Filter and sort by priority, status, and project.
 
+### Analytics & Insights
+- **Insights Dashboard:** High-level overview of project health, including sentiment distribution and volume trends.
+- **Sentiment Tracking:** Monitor how user sentiment changes over time to measure the impact of new releases or fixes.
+- **Data Filtering:** Drill down into analytics by project and date range to identify specific areas of improvement.
+
 ### Task & Project Tracking
 - **Kanban Board:** Drag-and-drop interface for managing task status (Todo, In Progress, Done).
 - **Project Workspaces:** Organize feedback and tasks into distinct projects with unique API keys.
