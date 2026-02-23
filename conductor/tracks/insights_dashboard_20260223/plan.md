@@ -8,7 +8,7 @@ This plan outlines the steps to implement the AI-powered Insights Dashboard, fol
     - [ ] Write failing unit tests for the sentiment analysis utility in `lib/ai/sentiment.ts`
     - [ ] Implement `analyzeSentiment` function using Vercel AI SDK and Gemini
     - [ ] Verify tests pass and coverage >80%
-- [ ] **Task: Create aggregation logic for analytics data**
+- [x] **Task: Create aggregation logic for analytics data** 1a15b84
     - [ ] Write failing unit tests for analytics aggregation in `lib/actions/analytics.ts`
     - [ ] Implement Server Action to calculate sentiment distribution and volume trends
     - [ ] Verify tests pass and coverage >80%
