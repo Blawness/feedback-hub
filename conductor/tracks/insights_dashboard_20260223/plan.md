@@ -20,7 +20,7 @@ This plan outlines the steps to implement the AI-powered Insights Dashboard, fol
     - [ ] Write failing unit tests for the `InsightsPage` component structure
     - [ ] Implement the base layout in `app/(dashboard)/insights/page.tsx`
     - [ ] Verify tests pass and coverage >80%
-- [ ] **Task: Create visualization components**
+- [x] **Task: Create visualization components** b067ad8
     - [ ] Write failing unit tests for SentimentChart and TrendChart components
     - [ ] Implement chart components using Tailwind and accessible SVG primitives
     - [ ] Verify tests pass and coverage >80%
