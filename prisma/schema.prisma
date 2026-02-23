@@ -68,12 +68,13 @@ model Feedback {
   githubIssueNumber Int?
   githubUrl         String?
 
-  // AI-generated fields
-  aiSummary           String?
-  aiSuggestedType     String? // AI's suggested type classification
-  aiSuggestedPriority String? // AI's suggested priority
-  aiConfidence        Float? // AI confidence score 0-1
-  agentPrompt         String? @db.Text
+    // AI-generated fields
+    aiSummary           String?
+    aiSuggestedType     String? // AI's suggested type classification
+    aiSuggestedPriority String? // AI's suggested priority
+    aiSentimentScore    Float?  // AI's sentiment score (-1 to 1)
+    aiConfidence        Float?  // AI confidence score 0-1
+    agentPrompt         String? @db.Text
 
   projectId  String
   project    Project @relation(fields: [projectId], references: [id])
