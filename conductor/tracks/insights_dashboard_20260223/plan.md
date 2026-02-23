@@ -4,7 +4,7 @@ This plan outlines the steps to implement the AI-powered Insights Dashboard, fol
 
 ## Phase 1: Data Aggregation & Logic
 
-- [ ] **Task: Implement feedback sentiment analysis service**
+- [x] **Task: Implement feedback sentiment analysis service** f33cad2
     - [ ] Write failing unit tests for the sentiment analysis utility in `lib/ai/sentiment.ts`
     - [ ] Implement `analyzeSentiment` function using Vercel AI SDK and Gemini
     - [ ] Verify tests pass and coverage >80%
