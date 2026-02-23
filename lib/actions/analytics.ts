@@ -5,6 +5,7 @@ export interface ProjectAnalytics {
   averageSentiment: number;
   totalFeedback: number;
   typeDistribution: { type: string; count: number }[];
+  sentimentDistribution: { label: string; count: number; color: string }[];
   volumeTrend: { date: string; count: number }[];
 }
 
@@ -26,7 +27,20 @@ export async function getProjectAnalytics(projectId: string): Promise<ProjectAna
     _count: { _all: true },
   });
 
-  // 3. Get volume trend for the last 30 days
+  // 3. Get sentiment distribution (Negative, Neutral, Positive)
+  const sentimentGroups = await Promise.all([
+    prisma.feedback.count({ where: { projectId, aiSentimentScore: { lt: -0.1 } } }),
+    prisma.feedback.count({ where: { projectId, aiSentimentScore: { gte: -0.1, lte: 0.1 } } }),
+    prisma.feedback.count({ where: { projectId, aiSentimentScore: { gt: 0.1 } } }),
+  ]);
+
+  const sentimentDistribution = [
+    { label: 'Negative', count: sentimentGroups[0], color: '#ef4444' }, // red-500
+    { label: 'Neutral', count: sentimentGroups[1], color: '#94a3b8' },  // slate-400
+    { label: 'Positive', count: sentimentGroups[2], color: '#22c55e' }, // green-500
+  ];
+
+  // 4. Get volume trend for the last 30 days
   const thirtyDaysAgo = subDays(new Date(), 30);
   const recentFeedback = await prisma.feedback.findMany({
     where: {
@@ -62,6 +76,7 @@ export async function getProjectAnalytics(projectId: string): Promise<ProjectAna
       type: g.type,
       count: g._count._all,
     })),
+    sentimentDistribution,
     volumeTrend,
   };
 }

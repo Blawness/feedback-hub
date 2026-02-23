@@ -9,6 +9,7 @@ vi.mock('@/lib/prisma', () => ({
       groupBy: vi.fn(),
       aggregate: vi.fn(),
       findMany: vi.fn(),
+      count: vi.fn(),
     },
   },
 }));
@@ -39,12 +40,16 @@ describe('getProjectAnalytics', () => {
       { createdAt: new Date('2026-02-21'), _count: 2 },
     ] as any);
 
+    // Mock sentiment groups count
+    vi.mocked(prisma.feedback.count).mockResolvedValue(5);
+
     const analytics = await getProjectAnalytics(projectId);
 
     expect(analytics.averageSentiment).toBe(0.5);
     expect(analytics.totalFeedback).toBe(10);
     expect(analytics.typeDistribution).toContainEqual({ type: 'bug', count: 3 });
     expect(analytics.typeDistribution).toContainEqual({ type: 'feature', count: 7 });
+    expect(analytics.sentimentDistribution).toHaveLength(3);
   });
 
   it('should return default values if no feedback exists', async () => {
@@ -57,11 +62,13 @@ describe('getProjectAnalytics', () => {
 
     vi.mocked(prisma.feedback.groupBy).mockResolvedValueOnce([]);
     vi.mocked(prisma.feedback.findMany).mockResolvedValueOnce([]);
+    vi.mocked(prisma.feedback.count).mockResolvedValue(0);
 
     const analytics = await getProjectAnalytics(projectId);
 
     expect(analytics.averageSentiment).toBe(0);
     expect(analytics.totalFeedback).toBe(0);
     expect(analytics.typeDistribution).toEqual([]);
+    expect(analytics.sentimentDistribution[0].count).toBe(0);
   });
 });
