@@ -56,3 +56,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
     },
 });
+
+export async function getCurrentUser() {
+    const session = await auth();
+    return session?.user;
+}

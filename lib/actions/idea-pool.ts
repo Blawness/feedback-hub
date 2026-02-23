@@ -1,0 +1,177 @@
+"use server";
+
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
+import { ai, isAIEnabled, getAiConfig } from "@/lib/ai/gemini";
+
+export type SavedIdeaInput = {
+    title: string;
+    description: string;
+    category: string;
+    techStack: string[];
+    difficulty: string;
+    audience: string;
+    features: string[];
+};
+
+export async function saveIdeaAction(idea: SavedIdeaInput) {
+    try {
+        const user = await getCurrentUser();
+
+        if (!user || !user.id) {
+            return {
+                error: "Unauthorized",
+                status: 401,
+            };
+        }
+
+        const savedIdea = await prisma.savedIdea.create({
+            data: {
+                ...idea,
+                userId: user.id,
+            },
+        });
+
+        revalidatePath("/idea-pool");
+
+        return {
+            success: true,
+            data: savedIdea,
+        };
+    } catch (error) {
+        console.error("Error saving idea:", error);
+        return {
+            error: "Failed to save idea",
+            status: 500,
+        };
+    }
+}
+
+export async function getSavedIdeasAction() {
+    try {
+        const user = await getCurrentUser();
+
+        if (!user || !user.id) {
+            return {
+                error: "Unauthorized",
+                status: 401,
+            };
+        }
+
+        const savedIdeas = await prisma.savedIdea.findMany({
+            where: {
+                userId: user.id,
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+
+        return {
+            success: true,
+            data: savedIdeas,
+        };
+    } catch (error) {
+        console.error("Error fetching saved ideas:", error);
+        return {
+            error: "Failed to fetch saved ideas",
+            status: 500,
+        };
+    }
+}
+
+export async function deleteSavedIdeaAction(ideaId: string) {
+    try {
+        const user = await getCurrentUser();
+
+        if (!user || !user.id) {
+            return {
+                error: "Unauthorized",
+                status: 401,
+            };
+        }
+
+        // Verify ownership
+        const idea = await prisma.savedIdea.findUnique({
+            where: { id: ideaId },
+        });
+
+        if (!idea || idea.userId !== user.id) {
+            return {
+                error: "Idea not found or unauthorized",
+                status: 404,
+            };
+        }
+
+        await prisma.savedIdea.delete({
+            where: { id: ideaId },
+        });
+
+        revalidatePath("/idea-pool");
+
+        return {
+            success: true,
+        };
+    } catch (error) {
+        console.error("Error deleting idea:", error);
+        return {
+            error: "Failed to delete idea",
+            status: 500,
+        };
+    }
+}
+
+export async function generateIdeasAction(count: number = 3) {
+    if (!isAIEnabled() || !ai) {
+        return { error: "AI is not available. Please configure Gemini API key." };
+    }
+
+    try {
+        const config = await getAiConfig();
+
+        // Force use the idea-generator template instruction if available, otherwise use a fallback
+        const systemInstruction = config.systemInstruction ||
+            "You are a creative technical product manager and software architect. Your task is to generate innovative and practical software project ideas. For each idea, you must provide a catchy Title, a Category (e.g., SaaS, Web App, Mobile App, CLI Tool, Browser Extension), a recommended Tech Stack (as an array of strings), a detailed 1-2 paragraph Description, a Difficulty Level (Beginner, Intermediate, Advanced), a Target Audience description, and a list of 3-5 Key Features. Ensure ideas represent modern, in-demand technologies and solve real problems.";
+
+        const prompt = `Generate exactly ${count} unique software project ideas. Return the result strictly as a JSON array of objects, where each object matches this structure:
+{
+  "title": "String",
+  "category": "String",
+  "techStack": ["String"],
+  "description": "String",
+  "difficulty": "String",
+  "audience": "String",
+  "features": ["String"]
+}`;
+
+        const response = await ai.models.generateContent({
+            model: config.model,
+            contents: `${systemInstruction}\n\n${prompt}`,
+            config: {
+                temperature: 0.9, // Higher temperature for more creative ideas
+                maxOutputTokens: config.maxOutputTokens,
+                topP: config.topP,
+                topK: config.topK,
+            },
+        });
+
+        const text = response.text?.trim();
+        if (!text) return { error: "No response from AI." };
+
+        // Clean markdown JSON formatting if present
+        const cleaned = text.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/i, "").trim();
+        const parsedIdeas = JSON.parse(cleaned) as SavedIdeaInput[];
+
+        return {
+            success: true,
+            data: parsedIdeas,
+        };
+    } catch (error) {
+        console.error("AI Idea Generation failed:", error);
+        return {
+            error: "Failed to generate ideas. Please try again.",
+            status: 500,
+        };
+    }
+}

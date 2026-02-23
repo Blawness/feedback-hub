@@ -21,6 +21,7 @@ model User {
   comments     Comment[]
   chatMessages ChatMessage[]
   chatThreads  ChatThread[]
+  savedIdeas   SavedIdea[]
 
   @@index([email])
 }
@@ -68,13 +69,13 @@ model Feedback {
   githubIssueNumber Int?
   githubUrl         String?
 
-    // AI-generated fields
-    aiSummary           String?
-    aiSuggestedType     String? // AI's suggested type classification
-    aiSuggestedPriority String? // AI's suggested priority
-    aiSentimentScore    Float?  // AI's sentiment score (-1 to 1)
-    aiConfidence        Float?  // AI confidence score 0-1
-    agentPrompt         String? @db.Text
+  // AI-generated fields
+  aiSummary           String?
+  aiSuggestedType     String? // AI's suggested type classification
+  aiSuggestedPriority String? // AI's suggested priority
+  aiSentimentScore    Float? // AI's sentiment score (-1 to 1)
+  aiConfidence        Float? // AI confidence score 0-1
+  agentPrompt         String? @db.Text
 
   projectId  String
   project    Project @relation(fields: [projectId], references: [id])
@@ -186,7 +187,7 @@ model ChatThread {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   taskId String?
-  task   Task?  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task   Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   projectId String?
   project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -199,4 +200,22 @@ model ChatThread {
   @@index([userId])
   @@index([taskId])
   @@index([projectId])
+}
+
+model SavedIdea {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @db.Text
+  category    String
+  techStack   String[]
+  difficulty  String
+  audience    String
+  features    String[]
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

@@ -13,6 +13,7 @@ vi.mock('lucide-react', () => ({
   BookText: () => <span>DocsIcon</span>,
   Bot: () => <span>BotIcon</span>,
   BarChart3: () => <span>InsightsIcon</span>,
+  Lightbulb: () => <span>IdeaPoolIcon</span>,
 }));
 
 // Mock next-auth
