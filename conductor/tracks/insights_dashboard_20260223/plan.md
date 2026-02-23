@@ -16,7 +16,7 @@ This plan outlines the steps to implement the AI-powered Insights Dashboard, fol
 
 ## Phase 2: Insights UI & Visualizations
 
-- [ ] **Task: Design and implement the Insights Dashboard layout**
+- [x] **Task: Design and implement the Insights Dashboard layout** e7618cd
     - [ ] Write failing unit tests for the `InsightsPage` component structure
     - [ ] Implement the base layout in `app/(dashboard)/insights/page.tsx`
     - [ ] Verify tests pass and coverage >80%
