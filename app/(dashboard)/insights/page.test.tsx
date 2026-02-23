@@ -54,5 +54,10 @@ describe('InsightsPage', () => {
     
     expect(screen.getByTestId('sentiment-chart')).toBeInTheDocument();
     expect(screen.getByTestId('trend-chart')).toBeInTheDocument();
+
+    // Verify getProjectAnalytics was called with default 30 days
+    await waitFor(() => {
+      expect(getProjectAnalytics).toHaveBeenCalledWith('test-project', 30);
+    });
   });
 });

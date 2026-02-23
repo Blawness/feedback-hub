@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function InsightsPage() {
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [days, setDays] = useState<string>("30");
   const [analytics, setAnalytics] = useState<ProjectAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +34,7 @@ export default function InsightsPage() {
       if (!selectedProjectId) return;
       setLoading(true);
       try {
-        const data = await getProjectAnalytics(selectedProjectId);
+        const data = await getProjectAnalytics(selectedProjectId, parseInt(days));
         setAnalytics(data);
       } catch (error) {
         console.error("Failed to load analytics:", error);
@@ -42,15 +43,15 @@ export default function InsightsPage() {
       }
     }
     loadAnalytics();
-  }, [selectedProjectId]);
+  }, [selectedProjectId, days]);
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between space-y-2 md:space-y-0">
         <h2 className="text-3xl font-bold tracking-tight">Insights Dashboard</h2>
         <div className="flex items-center space-x-2">
           <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[150px] md:w-[200px]">
               <SelectValue placeholder="Select Project" />
             </SelectTrigger>
             <SelectContent>
@@ -59,10 +60,20 @@ export default function InsightsPage() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={days} onValueChange={setDays}>
+            <SelectTrigger className="w-[120px] md:w-[150px]">
+              <SelectValue placeholder="Range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">Last 7 days</SelectItem>
+              <SelectItem value="30">Last 30 days</SelectItem>
+              <SelectItem value="90">Last 90 days</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
       
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Average Sentiment</CardTitle>
@@ -73,7 +84,7 @@ export default function InsightsPage() {
                 {analytics?.averageSentiment.toFixed(2) || "0.00"}
               </div>
             )}
-            <p className="text-xs text-muted-foreground">Across all feedback</p>
+            <p className="text-xs text-muted-foreground">Across selected period</p>
           </CardContent>
         </Card>
         <Card>
@@ -84,13 +95,13 @@ export default function InsightsPage() {
             {loading ? <Skeleton className="h-8 w-[100px]" /> : (
               <div className="text-2xl font-bold">{analytics?.totalFeedback || 0}</div>
             )}
-            <p className="text-xs text-muted-foreground">Received total</p>
+            <p className="text-xs text-muted-foreground">In this period</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
+        <Card className="lg:col-span-4">
           <CardHeader>
             <CardTitle>Sentiment Trend</CardTitle>
           </CardHeader>
@@ -100,7 +111,7 @@ export default function InsightsPage() {
             )}
           </CardContent>
         </Card>
-        <Card className="col-span-3">
+        <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle>Feedback Distribution</CardTitle>
             <CardDescription>By sentiment category</CardDescription>

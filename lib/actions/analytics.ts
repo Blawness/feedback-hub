@@ -12,10 +12,16 @@ export interface ProjectAnalytics {
 /**
  * Calculates aggregated analytics for a specific project.
  */
-export async function getProjectAnalytics(projectId: string): Promise<ProjectAnalytics> {
+export async function getProjectAnalytics(projectId: string, days: number = 30): Promise<ProjectAnalytics> {
+  const startDate = subDays(new Date(), days);
+  const where = { 
+    projectId,
+    createdAt: { gte: startDate }
+  };
+
   // 1. Get average sentiment and total count
   const aggregation = await prisma.feedback.aggregate({
-    where: { projectId },
+    where,
     _avg: { aiSentimentScore: true },
     _count: { _all: true },
   });
@@ -23,15 +29,15 @@ export async function getProjectAnalytics(projectId: string): Promise<ProjectAna
   // 2. Get distribution of feedback types
   const typeGroups = await prisma.feedback.groupBy({
     by: ['type'],
-    where: { projectId },
+    where,
     _count: { _all: true },
   });
 
   // 3. Get sentiment distribution (Negative, Neutral, Positive)
   const sentimentGroups = await Promise.all([
-    prisma.feedback.count({ where: { projectId, aiSentimentScore: { lt: -0.1 } } }),
-    prisma.feedback.count({ where: { projectId, aiSentimentScore: { gte: -0.1, lte: 0.1 } } }),
-    prisma.feedback.count({ where: { projectId, aiSentimentScore: { gt: 0.1 } } }),
+    prisma.feedback.count({ where: { ...where, aiSentimentScore: { lt: -0.1 } } }),
+    prisma.feedback.count({ where: { ...where, aiSentimentScore: { gte: -0.1, lte: 0.1 } } }),
+    prisma.feedback.count({ where: { ...where, aiSentimentScore: { gt: 0.1 } } }),
   ]);
 
   const sentimentDistribution = [
@@ -40,13 +46,9 @@ export async function getProjectAnalytics(projectId: string): Promise<ProjectAna
     { label: 'Positive', count: sentimentGroups[2], color: '#22c55e' }, // green-500
   ];
 
-  // 4. Get volume trend for the last 30 days
-  const thirtyDaysAgo = subDays(new Date(), 30);
+  // 4. Get volume trend for the period
   const recentFeedback = await prisma.feedback.findMany({
-    where: {
-      projectId,
-      createdAt: { gte: thirtyDaysAgo },
-    },
+    where,
     select: { createdAt: true },
     orderBy: { createdAt: 'asc' },
   });
@@ -54,8 +56,8 @@ export async function getProjectAnalytics(projectId: string): Promise<ProjectAna
   // Process trends in-memory for simplicity and cross-DB compatibility
   const trendMap = new Map<string, number>();
   
-  // Initialize last 30 days with 0
-  for (let i = 0; i <= 30; i++) {
+  // Initialize days with 0
+  for (let i = 0; i <= days; i++) {
     const dateStr = format(subDays(new Date(), i), 'yyyy-MM-dd');
     trendMap.set(dateStr, 0);
   }
