@@ -24,7 +24,7 @@ This plan outlines the steps to implement the AI-powered Insights Dashboard, fol
     - [ ] Write failing unit tests for SentimentChart and TrendChart components
     - [ ] Implement chart components using Tailwind and accessible SVG primitives
     - [ ] Verify tests pass and coverage >80%
-- [ ] **Task: Integrate UI with Analytics API**
+- [x] **Task: Integrate UI with Analytics API** b640050
     - [ ] Write failing unit tests for data fetching in the Insights page
     - [ ] Connect the dashboard charts to the aggregation Server Action
     - [ ] Verify tests pass and coverage >80%
