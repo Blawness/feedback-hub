@@ -32,7 +32,7 @@ This plan outlines the steps to implement the AI-powered Insights Dashboard, fol
 
 ## Phase 3: Integration & Polish
 
-- [ ] **Task: Update navigation and sidebar**
+- [x] **Task: Update navigation and sidebar** f5f84bc
     - [ ] Add "Insights" link to `components/layout/sidebar.tsx`
     - [ ] Verify navigation works correctly
 - [ ] **Task: Implement filtering and responsiveness**
