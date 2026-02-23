@@ -22,6 +22,10 @@
 
 ## Development & DevOps
 - **Language:** [TypeScript](https://www.typescriptlang.org/)
+- **Testing:** [Vitest](https://vitest.dev/)
 - **Linting:** [ESLint](https://eslint.org/)
 - **Package Manager:** npm
 - **Version Control:** Git / GitHub Integration via Octokit.
+
+## Dated Notes
+- **2026-02-23:** Added Vitest for unit testing and code coverage to support the TDD workflow mandated in `workflow.md`.
