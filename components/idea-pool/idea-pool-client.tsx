@@ -5,7 +5,8 @@ import { Sparkles, Bookmark, RefreshCw, Loader2 } from "lucide-react";
 import { IdeaCard, IdeaCardProps } from "./idea-card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { generateIdeasAction, saveIdeaAction, deleteSavedIdeaAction, SavedIdeaInput } from "@/lib/actions/idea-pool";
+import { GenerationConfig } from "./generation-config";
+import { generateIdeasAction, saveIdeaAction, deleteSavedIdeaAction, SavedIdeaInput, IdeaGenerationConfig } from "@/lib/actions/idea-pool";
 import { useToast } from "@/hooks/use-toast";
 
 type SavedIdea = SavedIdeaInput & { id: string };
@@ -21,6 +22,11 @@ export function IdeaPoolClient({ initialSavedIdeas }: IdeaPoolClientProps) {
     const [activeTab, setActiveTab] = useState("explore");
     const [generatedIdeas, setGeneratedIdeas] = useState<SavedIdeaInput[]>([]);
     const [savedIdeas, setSavedIdeas] = useState<SavedIdea[]>(initialSavedIdeas);
+    const [generationConfig, setGenerationConfig] = useState<IdeaGenerationConfig>({
+        count: 3,
+        category: undefined,
+        difficulty: undefined,
+    });
 
     // Loading states
     const [isGenerating, setIsGenerating] = useState(false);
@@ -29,7 +35,7 @@ export function IdeaPoolClient({ initialSavedIdeas }: IdeaPoolClientProps) {
     const handleGenerate = async () => {
         setIsGenerating(true);
         try {
-            const result = await generateIdeasAction(3); // Generate 3 ideas
+            const result = await generateIdeasAction(generationConfig); // Use config from state
 
             if (result.error) {
                 toast({
@@ -189,6 +195,8 @@ export function IdeaPoolClient({ initialSavedIdeas }: IdeaPoolClientProps) {
                 </TabsList>
 
                 <TabsContent value="explore" className="mt-0 outline-none">
+                    <GenerationConfig config={generationConfig} onChange={setGenerationConfig} />
+
                     {generatedIdeas.length === 0 ? (
                         <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl bg-gray-50/50 dark:bg-gray-900/20">
                             <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-full mb-4">

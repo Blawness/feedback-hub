@@ -15,6 +15,13 @@ export type SavedIdeaInput = {
     features: string[];
 };
 
+export type IdeaGenerationConfig = {
+    count?: number;
+    category?: string;
+    difficulty?: string;
+    techStackFocus?: string[];
+};
+
 export async function saveIdeaAction(idea: SavedIdeaInput) {
     try {
         const user = await getCurrentUser();
@@ -122,19 +129,26 @@ export async function deleteSavedIdeaAction(ideaId: string) {
     }
 }
 
-export async function generateIdeasAction(count: number = 3) {
+export async function generateIdeasAction(config: IdeaGenerationConfig = {}) {
+    const { count = 3, category, difficulty, techStackFocus } = config;
+
     if (!isAIEnabled() || !ai) {
         return { error: "AI is not available. Please configure Gemini API key." };
     }
 
     try {
-        const config = await getAiConfig();
+        const aiConfig = await getAiConfig();
 
         // Force use the idea-generator template instruction if available, otherwise use a fallback
-        const systemInstruction = config.systemInstruction ||
+        const systemInstruction = aiConfig.systemInstruction ||
             "You are a creative technical product manager and software architect. Your task is to generate innovative and practical software project ideas. For each idea, you must provide a catchy Title, a Category (e.g., SaaS, Web App, Mobile App, CLI Tool, Browser Extension), a recommended Tech Stack (as an array of strings), a detailed 1-2 paragraph Description, a Difficulty Level (Beginner, Intermediate, Advanced), a Target Audience description, and a list of 3-5 Key Features. Ensure ideas represent modern, in-demand technologies and solve real problems.";
 
-        const prompt = `Generate exactly ${count} unique software project ideas. Return the result strictly as a JSON array of objects, where each object matches this structure:
+        let constraints = "";
+        if (category) constraints += `- Category: ${category}\n`;
+        if (difficulty) constraints += `- Difficulty Level: ${difficulty}\n`;
+        if (techStackFocus && techStackFocus.length > 0) constraints += `- Tech Stack Focus: ${techStackFocus.join(", ")}\n`;
+
+        const prompt = `Generate exactly ${count} unique software project ideas. ${constraints ? `Ensure the ideas follow these specific constraints:\n${constraints}\n` : ""}Return the result strictly as a JSON array of objects, where each object matches this structure:
 {
   "title": "String",
   "category": "String",
@@ -146,13 +160,13 @@ export async function generateIdeasAction(count: number = 3) {
 }`;
 
         const response = await ai.models.generateContent({
-            model: config.model,
+            model: aiConfig.model,
             contents: `${systemInstruction}\n\n${prompt}`,
             config: {
                 temperature: 0.9, // Higher temperature for more creative ideas
-                maxOutputTokens: config.maxOutputTokens,
-                topP: config.topP,
-                topK: config.topK,
+                maxOutputTokens: aiConfig.maxOutputTokens,
+                topP: aiConfig.topP,
+                topK: aiConfig.topK,
             },
         });
 
