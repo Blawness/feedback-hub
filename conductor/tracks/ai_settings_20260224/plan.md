@@ -1,18 +1,18 @@
 # Implementation Plan: AI Provider & API Key Settings
 
-## Phase 1: Database & Security [checkpoint: pending]
+## Phase 1: Database & Security [checkpoint: completed]
 
-- [ ] Task: Update Prisma schema and encryption utility
-    - [ ] Add `aiProvider`, `encryptedGeminiKey`, and `encryptedOpenRouterKey` to the `Settings` model in `schema.prisma`.
-    - [ ] Run `npx prisma generate` and `npx prisma db push`
-    - [ ] Create `lib/utils/encryption.ts` with AES-256-GCM `encrypt` and `decrypt` functions.
-    - [ ] Write unit tests for encryption/decryption in `lib/utils/encryption.test.ts`.
-- [ ] Task: Implement AI Settings Server Actions
-    - [ ] Create `lib/actions/ai-settings.ts`
-    - [ ] Implement `updateAiSettingsAction` to encrypt keys and save to database.
-    - [ ] Implement `getAiSettingsAction` to retrieve settings (returning masked keys for UI).
-    - [ ] Write unit tests for Server Actions in `lib/actions/ai-settings.test.ts`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Database & Security' (Protocol in workflow.md)
+- [x] Task: Update Prisma schema and encryption utility
+    - [x] Add `aiProvider`, `encryptedGeminiKey`, and `encryptedOpenRouterKey` to the `Settings` model in `schema.prisma`.
+    - [x] Run `npx prisma generate` and `npx prisma db push`
+    - [x] Create `lib/utils/encryption.ts` with AES-256-GCM `encrypt` and `decrypt` functions.
+    - [x] Write unit tests for encryption/decryption in `lib/utils/encryption.test.ts`.
+- [x] Task: Implement AI Settings Server Actions
+    - [x] Create `lib/actions/ai-settings.ts`
+    - [x] Implement `updateAiSettingsAction` to encrypt keys and save to database.
+    - [x] Implement `getAiSettingsAction` to retrieve settings (returning masked keys for UI).
+    - [x] Write unit tests for Server Actions in `lib/actions/ai-settings.test.ts`.
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Database & Security' (Protocol in workflow.md)
 
 ## Phase 2: UI Implementation [checkpoint: pending]
 
