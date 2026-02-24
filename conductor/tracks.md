@@ -9,5 +9,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: buat fitur baru untuk semacam idea pool gitu, generate pake gemini api dan bisa disimpan ide yg kita suka. ide ini merupakan ide proyek dan bisa di kategorikan juga semisal : landing page, SaaS, web app dll, dan juga lengkap dengan tech stack nya**
+- [x] **Track: buat fitur baru untuk semacam idea pool gitu, generate pake gemini api dan bisa disimpan ide yg kita suka. ide ini merupakan ide proyek dan bisa di kategorikan juga semisal : landing page, SaaS, web app dll, dan juga lengkap with tech stack nya**
 *Link: [./tracks/idea_pool_20260223/](./tracks/idea_pool_20260223/)*
+
+---
+
+- [ ] **Track: Tambah settings buat selec ai provider dan enter api key berdasarkan provider tsb dari settings. api disimpan ke db dan di enkripsi, (Gemini & Openrouter), settings di simpan di database**
+*Link: [./tracks/ai_settings_20260224/](./tracks/ai_settings_20260224/)*
