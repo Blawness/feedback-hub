@@ -1,8 +1,24 @@
 "use server";
 
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { encrypt, decrypt } from "@/lib/utils/encryption";
 import { revalidatePath } from "next/cache";
+
+function resolveEncryptionKey(): string | null {
+  const envKey = process.env.ENCRYPTION_KEY;
+  if (envKey) {
+    // Preserve backward compatibility if a valid 32-char key is already configured.
+    if (envKey.length === 32) return envKey;
+    return crypto.createHash("sha256").update(envKey).digest("hex").slice(0, 32);
+  }
+
+  const authSecret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET;
+  if (!authSecret) return null;
+
+  // Stable 32-char key derived from existing auth secret for local/dev convenience.
+  return crypto.createHash("sha256").update(authSecret).digest("hex").slice(0, 32);
+}
 
 /**
  * Updates the global AI settings, including provider and encrypted API keys.
@@ -19,8 +35,8 @@ export async function updateAiSettingsAction(data: {
   topK?: number;
   masterPrompt?: string;
 }) {
-  const encryptionKey = process.env.ENCRYPTION_KEY || "";
-  if (!encryptionKey || encryptionKey.length !== 32) {
+  const encryptionKey = resolveEncryptionKey();
+  if (!encryptionKey) {
     return { error: "Server encryption key is not configured correctly." };
   }
 
@@ -130,8 +146,8 @@ export async function getAiSettingsAction() {
  * allowing getAiModel() to fallback to environment variables.
  */
 export async function getDecryptedAiKeys() {
-  const encryptionKey = process.env.ENCRYPTION_KEY || "";
-  if (!encryptionKey || encryptionKey.length !== 32) {
+  const encryptionKey = resolveEncryptionKey();
+  if (!encryptionKey) {
     // No encryption key configured — return null to allow env var fallback
     return null;
   }
