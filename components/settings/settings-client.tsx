@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RefreshCw, Github, CheckCircle2, Bell, Volume2 } from "lucide-react";
 import { syncProjects } from "@/lib/actions/projects";
-import { AiSettingsCard } from "@/components/settings/ai-settings-card";
+
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useSettingsStore } from "@/lib/store/use-settings-store";
@@ -146,7 +146,6 @@ FEEDBACK_API_KEY: <your-project-api-key>
                 </Card>
             </div>
 
-            <AiSettingsCard />
         </div>
     );
 }

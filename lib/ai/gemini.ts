@@ -1,30 +1,16 @@
-import { GoogleGenAI } from "@google/genai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import { prisma } from "@/lib/prisma";
 import { getTemplateById } from "@/lib/ai/prompt-templates";
-
-const apiKey = process.env.GEMINI_API_KEY;
-
-export function createGeminiClient() {
-    if (!apiKey) {
-        console.warn("GEMINI_API_KEY is not set. AI features will be disabled.");
-        return null;
-    }
-    return new GoogleGenAI({ apiKey });
-}
-
-/** Singleton Gemini client — null if API key is missing */
-export const ai = createGeminiClient();
+import { getDecryptedAiKeys } from "@/lib/actions/ai-settings";
 
 /** Default model to use for all AI features */
-export const DEFAULT_MODEL = "gemini-2.0-flash";
-
-/** Check if AI features are available */
-export function isAIEnabled() {
-    return ai !== null;
-}
+export const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash";
+export const DEFAULT_OPENROUTER_MODEL = "google/gemini-2.0-flash-001";
 
 /** Runtime AI config resolved from persisted settings */
 export interface AiConfig {
+    provider: string;
     model: string;
     temperature: number;
     maxOutputTokens: number;
@@ -32,6 +18,53 @@ export interface AiConfig {
     topK: number;
     systemInstruction: string | undefined;
     language: string;
+}
+
+/**
+ * Resolves the AI model based on current database settings.
+ * Uses Vercel AI SDK for provider abstraction.
+ */
+export async function getAiModel() {
+    const keys = await getDecryptedAiKeys();
+    
+    // Fallback to environment variables if no keys in DB
+    const provider = keys?.aiProvider || "gemini";
+    const geminiKey = keys?.geminiKey || process.env.GEMINI_API_KEY;
+    const openRouterKey = keys?.openRouterKey || process.env.OPENROUTER_API_KEY;
+
+    const settings = await prisma.aiSettings.upsert({
+        where: { id: "default" },
+        update: {},
+        create: { id: "default" },
+    });
+
+    if (provider === "openrouter") {
+        if (!openRouterKey) {
+            console.warn("OpenRouter API Key is not set.");
+            return null;
+        }
+        const openrouter = createOpenAI({
+            baseURL: "https://openrouter.ai/api/v1",
+            apiKey: openRouterKey,
+        });
+        // If settings specify a gemini model but we switched to openrouter, use default
+        const modelName = settings.model.includes("gemini") ? DEFAULT_OPENROUTER_MODEL : settings.model;
+        return openrouter(modelName);
+    }
+
+    // Default to Gemini
+    if (!geminiKey) {
+        console.warn("Gemini API Key is not set.");
+        return null;
+    }
+    const google = createGoogleGenerativeAI({ apiKey: geminiKey });
+    return google(settings.model || DEFAULT_GEMINI_MODEL);
+}
+
+/** Check if AI features are available by attempting to get a model */
+export async function isAIEnabled() {
+    const model = await getAiModel();
+    return model !== null;
 }
 
 /** Fetch the persisted AI settings and resolve config for generation */
@@ -67,6 +100,7 @@ export async function getAiConfig(): Promise<AiConfig> {
         }
 
         return {
+            provider: settings.aiProvider || "gemini",
             model: settings.model,
             temperature: settings.temperature,
             maxOutputTokens: settings.maxOutputTokens,
@@ -76,9 +110,10 @@ export async function getAiConfig(): Promise<AiConfig> {
             language: settings.language,
         };
     } catch {
-        // Fallback to defaults if DB not available
+        // Fallback to defaults
         return {
-            model: DEFAULT_MODEL,
+            provider: "gemini",
+            model: DEFAULT_GEMINI_MODEL,
             temperature: 0.7,
             maxOutputTokens: 2048,
             topP: 0.95,

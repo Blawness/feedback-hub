@@ -3,7 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { ai, isAIEnabled, getAiConfig } from "@/lib/ai/gemini";
+import { isAIEnabled, getAiConfig, getAiModel } from "@/lib/ai/gemini";
+import { generateText } from "ai";
 
 export type SavedIdeaInput = {
     title: string;
@@ -132,12 +133,14 @@ export async function deleteSavedIdeaAction(ideaId: string) {
 export async function generateIdeasAction(config: IdeaGenerationConfig = {}) {
     const { count = 3, category, difficulty, techStackFocus } = config;
 
-    if (!isAIEnabled() || !ai) {
-        return { error: "AI is not available. Please configure Gemini API key." };
+    if (!(await isAIEnabled())) {
+        return { error: "AI is not available. Please configure your API key in AI Settings." };
     }
 
     try {
         const aiConfig = await getAiConfig();
+        const model = await getAiModel();
+        if (!model) return { error: "AI model not available. Please configure your API key in AI Settings." };
 
         // Force use the idea-generator template instruction if available, otherwise use a fallback
         const systemInstruction = aiConfig.systemInstruction ||
@@ -159,19 +162,15 @@ export async function generateIdeasAction(config: IdeaGenerationConfig = {}) {
   "features": ["String"]
 }`;
 
-        const response = await ai.models.generateContent({
-            model: aiConfig.model,
-            contents: `${systemInstruction}\n\n${prompt}`,
-            config: {
-                temperature: 0.9, // Higher temperature for more creative ideas
-                maxOutputTokens: aiConfig.maxOutputTokens,
-                topP: aiConfig.topP,
-                topK: aiConfig.topK,
-            },
+        const { text } = await generateText({
+            model,
+            system: systemInstruction,
+            prompt,
+            temperature: 0.9, // Higher temperature for more creative ideas
+            maxOutputTokens: aiConfig.maxOutputTokens,
         });
 
-        const text = response.text?.trim();
-        if (!text) return { error: "No response from AI." };
+        if (!text?.trim()) return { error: "No response from AI." };
 
         // Clean markdown JSON formatting if present
         const cleaned = text.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/i, "").trim();

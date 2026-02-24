@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { saveIdeaAction, getSavedIdeasAction, deleteSavedIdeaAction, generateIdeasAction } from './idea-pool';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { ai, isAIEnabled, getAiConfig } from '@/lib/ai/gemini';
 
 // Mock dependencies
 vi.mock('@/lib/prisma', () => ({
@@ -24,14 +23,20 @@ vi.mock('next/cache', () => ({
     revalidatePath: vi.fn(),
 }));
 
+const mockGetAiModel = vi.fn();
+const mockIsAIEnabled = vi.fn();
+const mockGetAiConfig = vi.fn();
+
 vi.mock('@/lib/ai/gemini', () => ({
-    ai: {
-        models: {
-            generateContent: vi.fn(),
-        },
-    },
-    isAIEnabled: vi.fn(),
-    getAiConfig: vi.fn(),
+    isAIEnabled: (...args: unknown[]) => mockIsAIEnabled(...args),
+    getAiConfig: (...args: unknown[]) => mockGetAiConfig(...args),
+    getAiModel: (...args: unknown[]) => mockGetAiModel(...args),
+}));
+
+const mockGenerateText = vi.fn();
+
+vi.mock('ai', () => ({
+    generateText: (...args: unknown[]) => mockGenerateText(...args),
 }));
 
 describe('Idea Pool Actions', () => {
@@ -72,7 +77,7 @@ describe('Idea Pool Actions', () => {
         });
 
         it('should return error if unauthorized', async () => {
-            vi.mocked(getCurrentUser).mockResolvedValueOnce(null);
+            vi.mocked(getCurrentUser).mockResolvedValueOnce(undefined);
 
             const result = await saveIdeaAction(mockIdeaInput);
 
@@ -99,7 +104,7 @@ describe('Idea Pool Actions', () => {
         });
 
         it('should return error if unauthorized', async () => {
-            vi.mocked(getCurrentUser).mockResolvedValueOnce(null);
+            vi.mocked(getCurrentUser).mockResolvedValueOnce(undefined);
 
             const result = await getSavedIdeasAction();
 
@@ -126,7 +131,7 @@ describe('Idea Pool Actions', () => {
         });
 
         it('should return error if unauthorized', async () => {
-            vi.mocked(getCurrentUser).mockResolvedValueOnce(null);
+            vi.mocked(getCurrentUser).mockResolvedValueOnce(undefined);
 
             const result = await deleteSavedIdeaAction('idea-1');
 
@@ -171,55 +176,101 @@ describe('Idea Pool Actions', () => {
             },
         ]);
 
+        const mockModel = { modelId: 'test-model' };
+
         beforeEach(() => {
-            vi.mocked(isAIEnabled).mockReturnValue(true);
-            vi.mocked(getAiConfig).mockResolvedValue(mockConfig as any);
+            mockIsAIEnabled.mockResolvedValue(true);
+            mockGetAiConfig.mockResolvedValue(mockConfig);
+            mockGetAiModel.mockResolvedValue(mockModel);
         });
 
         it('should successfully generate and parse ideas from AI', async () => {
-            vi.mocked(ai!.models.generateContent).mockResolvedValueOnce({
+            mockGenerateText.mockResolvedValueOnce({
                 text: mockAiResponse,
-            } as any);
+            });
 
-            const result = await generateIdeasAction(1);
+            const result = await generateIdeasAction({ count: 1 });
 
             expect(result.success).toBe(true);
             expect(result.data).toHaveLength(1);
             expect(result.data?.[0].title).toBe('AI Idea 1');
-            expect(ai!.models.generateContent).toHaveBeenCalled();
+            expect(mockGenerateText).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    model: mockModel,
+                    temperature: 0.9,
+                })
+            );
         });
 
         it('should return error if AI is not enabled', async () => {
-            vi.mocked(isAIEnabled).mockReturnValue(false);
+            mockIsAIEnabled.mockResolvedValue(false);
 
-            const result = await generateIdeasAction(1);
+            const result = await generateIdeasAction({ count: 1 });
 
-            expect(result.error).toBe('AI is not available. Please configure Gemini API key.');
+            expect(result.error).toContain('AI is not available');
             expect(result.success).toBeUndefined();
-            expect(ai!.models.generateContent).not.toHaveBeenCalled();
+            expect(mockGenerateText).not.toHaveBeenCalled();
+        });
+
+        it('should return error if AI model is not available', async () => {
+            mockGetAiModel.mockResolvedValue(null);
+
+            const result = await generateIdeasAction({ count: 1 });
+
+            expect(result.error).toContain('AI model not available');
+            expect(mockGenerateText).not.toHaveBeenCalled();
         });
 
         it('should handle AI JSON parsing errors gracefully', async () => {
-            vi.mocked(ai!.models.generateContent).mockResolvedValueOnce({
+            mockGenerateText.mockResolvedValueOnce({
                 text: 'This is not valid JSON.',
-            } as any);
+            });
 
-            const result = await generateIdeasAction(1);
+            const result = await generateIdeasAction({ count: 1 });
 
             expect(result.error).toBe('Failed to generate ideas. Please try again.');
             expect(result.status).toBe(500);
         });
 
         it('should clean markdown json blocks before parsing', async () => {
-            vi.mocked(ai!.models.generateContent).mockResolvedValueOnce({
+            mockGenerateText.mockResolvedValueOnce({
                 text: `\`\`\`json\n${mockAiResponse}\n\`\`\``,
-            } as any);
+            });
 
-            const result = await generateIdeasAction(1);
+            const result = await generateIdeasAction({ count: 1 });
 
             expect(result.success).toBe(true);
             expect(result.data).toHaveLength(1);
             expect(result.data?.[0].title).toBe('AI Idea 1');
+        });
+
+        it('should pass generation constraints from config', async () => {
+            mockGenerateText.mockResolvedValueOnce({
+                text: mockAiResponse,
+            });
+
+            await generateIdeasAction({
+                count: 2,
+                category: 'SaaS',
+                difficulty: 'Advanced',
+                techStackFocus: ['React', 'Node.js'],
+            });
+
+            expect(mockGenerateText).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    prompt: expect.stringContaining('Category: SaaS'),
+                })
+            );
+            expect(mockGenerateText).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    prompt: expect.stringContaining('Difficulty Level: Advanced'),
+                })
+            );
+            expect(mockGenerateText).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    prompt: expect.stringContaining('Tech Stack Focus: React, Node.js'),
+                })
+            );
         });
     });
 });

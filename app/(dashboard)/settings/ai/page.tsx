@@ -8,7 +8,14 @@ export const metadata: Metadata = {
 };
 
 export default async function AiSettingsPage() {
-  const settings = await getAiSettingsAction();
+  const result = await getAiSettingsAction();
+
+  const settings = {
+    aiProvider: "aiProvider" in result ? result.aiProvider ?? "gemini" : "gemini",
+    hasGeminiKey: "hasGeminiKey" in result ? result.hasGeminiKey ?? false : false,
+    hasOpenRouterKey: "hasOpenRouterKey" in result ? result.hasOpenRouterKey ?? false : false,
+    error: "error" in result ? result.error : undefined,
+  };
 
   return (
     <div className="space-y-6">

@@ -27,7 +27,7 @@
 
 ## Phase 3: Integration & Refinement [checkpoint: pending]
 
-- [ ] Task: Update AI features to use configured keys
+- [~] Task: Update AI features to use configured keys
     - [ ] Refactor existing AI logic (e.g., feedback analysis, chat) to fetch the active provider and decrypted key from the database instead of environment variables.
     - [ ] Ensure fallback behavior if no key is configured.
 - [ ] Task: Final verification and mobile check

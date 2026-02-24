@@ -79,22 +79,30 @@ export async function getAiSettingsAction() {
 
 /**
  * Internal helper to get decrypted keys (Server-side only).
+ * Returns null if encryption key is not configured or settings don't exist,
+ * allowing getAiModel() to fallback to environment variables.
  */
 export async function getDecryptedAiKeys() {
   const encryptionKey = process.env.ENCRYPTION_KEY || "";
   if (!encryptionKey || encryptionKey.length !== 32) {
-    throw new Error("Server encryption key is not configured correctly.");
+    // No encryption key configured — return null to allow env var fallback
+    return null;
   }
 
-  const settings = await prisma.aiSettings.findUnique({
-    where: { id: "default" },
-  });
+  try {
+    const settings = await prisma.aiSettings.findUnique({
+      where: { id: "default" },
+    });
 
-  if (!settings) return null;
+    if (!settings) return null;
 
-  return {
-    aiProvider: settings.aiProvider,
-    geminiKey: settings.encryptedGeminiKey ? decrypt(settings.encryptedGeminiKey, encryptionKey) : null,
-    openRouterKey: settings.encryptedOpenRouterKey ? decrypt(settings.encryptedOpenRouterKey, encryptionKey) : null,
-  };
+    return {
+      aiProvider: settings.aiProvider,
+      geminiKey: settings.encryptedGeminiKey ? decrypt(settings.encryptedGeminiKey, encryptionKey) : null,
+      openRouterKey: settings.encryptedOpenRouterKey ? decrypt(settings.encryptedOpenRouterKey, encryptionKey) : null,
+    };
+  } catch (error) {
+    console.error("Failed to decrypt AI keys:", error);
+    return null;
+  }
 }

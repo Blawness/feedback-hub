@@ -14,5 +14,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Tambah settings buat selec ai provider dan enter api key berdasarkan provider tsb dari settings. api disimpan ke db dan di enkripsi, (Gemini & Openrouter), settings di simpan di database**
+- [~] **Track: Tambah settings buat selec ai provider dan enter api key berdasarkan provider tsb dari settings. api disimpan ke db dan di enkripsi, (Gemini & Openrouter), settings di simpan di database**
 *Link: [./tracks/ai_settings_20260224/](./tracks/ai_settings_20260224/)*
