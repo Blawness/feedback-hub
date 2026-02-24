@@ -27,16 +27,21 @@ export interface AiConfig {
 export async function getAiModel() {
     const keys = await getDecryptedAiKeys();
     
-    // Fallback to environment variables if no keys in DB
-    const provider = keys?.aiProvider || "gemini";
-    const geminiKey = keys?.geminiKey || process.env.GEMINI_API_KEY;
-    const openRouterKey = keys?.openRouterKey || process.env.OPENROUTER_API_KEY;
-
     const settings = await prisma.aiSettings.upsert({
         where: { id: "default" },
         update: {},
         create: { id: "default" },
     });
+
+    if (!settings.isEnabled) {
+        console.warn("AI Module is disabled in settings.");
+        return null;
+    }
+    
+    // Fallback to environment variables if no keys in DB
+    const provider = keys?.aiProvider || settings.aiProvider || "gemini";
+    const geminiKey = keys?.geminiKey || process.env.GEMINI_API_KEY;
+    const openRouterKey = keys?.openRouterKey || process.env.OPENROUTER_API_KEY;
 
     if (provider === "openrouter") {
         if (!openRouterKey) {

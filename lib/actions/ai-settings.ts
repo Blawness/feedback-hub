@@ -9,8 +9,15 @@ import { revalidatePath } from "next/cache";
  */
 export async function updateAiSettingsAction(data: {
   aiProvider: string;
+  isEnabled?: boolean;
   geminiKey?: string;
   openRouterKey?: string;
+  model?: string;
+  temperature?: number;
+  maxOutputTokens?: number;
+  topP?: number;
+  topK?: number;
+  masterPrompt?: string;
 }) {
   const encryptionKey = process.env.ENCRYPTION_KEY || "";
   if (!encryptionKey || encryptionKey.length !== 32) {
@@ -21,6 +28,34 @@ export async function updateAiSettingsAction(data: {
     const updateData: any = {
       aiProvider: data.aiProvider,
     };
+
+    if (data.isEnabled !== undefined) {
+      updateData.isEnabled = data.isEnabled;
+    }
+
+    if (data.model !== undefined) {
+      updateData.model = data.model;
+    }
+
+    if (data.temperature !== undefined) {
+      updateData.temperature = data.temperature;
+    }
+
+    if (data.maxOutputTokens !== undefined) {
+      updateData.maxOutputTokens = data.maxOutputTokens;
+    }
+
+    if (data.topP !== undefined) {
+      updateData.topP = data.topP;
+    }
+
+    if (data.topK !== undefined) {
+      updateData.topK = data.topK;
+    }
+
+    if (data.masterPrompt !== undefined) {
+      updateData.masterPrompt = data.masterPrompt;
+    }
 
     if (data.geminiKey) {
       updateData.encryptedGeminiKey = encrypt(data.geminiKey, encryptionKey);
@@ -59,17 +94,29 @@ export async function getAiSettingsAction() {
     if (!settings) {
       return {
         aiProvider: "gemini",
+        isEnabled: true,
         hasGeminiKey: false,
         hasOpenRouterKey: false,
+        model: "gemini-2.0-flash",
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+        topP: 0.95,
+        topK: 40,
+        masterPrompt: "",
       };
     }
 
     return {
       aiProvider: settings.aiProvider,
+      isEnabled: settings.isEnabled,
       hasGeminiKey: !!settings.encryptedGeminiKey,
       hasOpenRouterKey: !!settings.encryptedOpenRouterKey,
-      // We don't return the encrypted keys to the UI, even in encrypted form,
-      // for security and to prevent unnecessary data transfer.
+      model: settings.model,
+      temperature: settings.temperature,
+      maxOutputTokens: settings.maxOutputTokens,
+      topP: settings.topP,
+      topK: settings.topK,
+      masterPrompt: settings.masterPrompt ?? "",
     };
   } catch (error) {
     console.error("Failed to fetch AI settings:", error);

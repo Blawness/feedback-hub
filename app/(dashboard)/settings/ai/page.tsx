@@ -12,8 +12,15 @@ export default async function AiSettingsPage() {
 
   const settings = {
     aiProvider: "aiProvider" in result ? result.aiProvider ?? "gemini" : "gemini",
+    isEnabled: "isEnabled" in result ? result.isEnabled ?? true : true,
     hasGeminiKey: "hasGeminiKey" in result ? result.hasGeminiKey ?? false : false,
     hasOpenRouterKey: "hasOpenRouterKey" in result ? result.hasOpenRouterKey ?? false : false,
+    model: "model" in result ? result.model ?? "gemini-2.0-flash" : "gemini-2.0-flash",
+    temperature: "temperature" in result ? result.temperature ?? 0.7 : 0.7,
+    maxOutputTokens: "maxOutputTokens" in result ? result.maxOutputTokens ?? 2048 : 2048,
+    topP: "topP" in result ? result.topP ?? 0.95 : 0.95,
+    topK: "topK" in result ? result.topK ?? 40 : 40,
+    masterPrompt: "masterPrompt" in result ? result.masterPrompt ?? "" : "",
     error: "error" in result ? result.error : undefined,
   };
 

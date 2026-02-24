@@ -143,6 +143,7 @@ model Comment {
 
 model AiSettings {
   id              String   @id @default("default")
+  isEnabled       Boolean  @default(true)
   language        String   @default("auto")
   model           String   @default("gemini-2.0-flash")
   temperature     Float    @default(0.7)
