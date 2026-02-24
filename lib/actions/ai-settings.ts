@@ -1,69 +1,108 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { encrypt, decrypt } from "@/lib/utils/encryption";
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 
-const aiSettingsSchema = z.object({
-    language: z.string().min(1),
-    model: z.string().min(1),
-    temperature: z.number().min(0).max(2),
-    maxOutputTokens: z.number().int().min(256).max(8192),
-    topP: z.number().min(0).max(1),
-    topK: z.number().int().min(1).max(100),
-    masterPrompt: z.string().nullable(),
-    templateId: z.string().nullable(),
-});
+/**
+ * Updates the global AI settings, including provider and encrypted API keys.
+ */
+export async function updateAiSettingsAction(data: {
+  aiProvider: string;
+  geminiKey?: string;
+  openRouterKey?: string;
+}) {
+  const encryptionKey = process.env.ENCRYPTION_KEY || "";
+  if (!encryptionKey || encryptionKey.length !== 32) {
+    return { error: "Server encryption key is not configured correctly." };
+  }
 
-export type AiSettingsInput = z.infer<typeof aiSettingsSchema>;
+  try {
+    const updateData: any = {
+      aiProvider: data.aiProvider,
+    };
 
-const DEFAULT_SETTINGS: AiSettingsInput = {
-    language: "auto",
-    model: "gemini-2.0-flash",
-    temperature: 0.7,
-    maxOutputTokens: 2048,
-    topP: 0.95,
-    topK: 40,
-    masterPrompt: null,
-    templateId: "default",
-};
-
-/** Fetch AI settings (upserts default row if none exists) */
-export async function getAiSettings() {
-    const settings = await prisma.aiSettings.upsert({
-        where: { id: "default" },
-        update: {},
-        create: { id: "default" },
-    });
-    return settings;
-}
-
-/** Update AI settings with validation */
-export async function updateAiSettings(data: AiSettingsInput) {
-    const parsed = aiSettingsSchema.safeParse(data);
-
-    if (!parsed.success) {
-        return { error: parsed.error.flatten().fieldErrors };
+    if (data.geminiKey) {
+      updateData.encryptedGeminiKey = encrypt(data.geminiKey, encryptionKey);
     }
 
-    const settings = await prisma.aiSettings.upsert({
-        where: { id: "default" },
-        update: parsed.data,
-        create: { id: "default", ...parsed.data },
+    if (data.openRouterKey) {
+      updateData.encryptedOpenRouterKey = encrypt(data.openRouterKey, encryptionKey);
+    }
+
+    await prisma.aiSettings.upsert({
+      where: { id: "default" },
+      update: updateData,
+      create: {
+        id: "default",
+        ...updateData,
+      },
     });
 
-    revalidatePath("/settings");
-    return { success: true, settings };
+    revalidatePath("/settings/ai");
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to update AI settings:", error);
+    return { error: "Failed to save AI settings." };
+  }
 }
 
-/** Reset AI settings to defaults */
-export async function resetAiSettings() {
-    const settings = await prisma.aiSettings.upsert({
-        where: { id: "default" },
-        update: DEFAULT_SETTINGS,
-        create: { id: "default", ...DEFAULT_SETTINGS },
+/**
+ * Retrieves the global AI settings. API keys are masked for the UI.
+ */
+export async function getAiSettingsAction() {
+  try {
+    const settings = await prisma.aiSettings.findUnique({
+      where: { id: "default" },
     });
 
-    revalidatePath("/settings");
-    return { success: true, settings };
+    if (!settings) {
+      return {
+        aiProvider: "gemini",
+        hasGeminiKey: false,
+        hasOpenRouterKey: false,
+      };
+    }
+
+    return {
+      aiProvider: settings.aiProvider,
+      hasGeminiKey: !!settings.encryptedGeminiKey,
+      hasOpenRouterKey: !!settings.encryptedOpenRouterKey,
+      // We don't return the encrypted keys to the UI, even in encrypted form,
+      // for security and to prevent unnecessary data transfer.
+    };
+  } catch (error) {
+    console.error("Failed to fetch AI settings:", error);
+    return { error: "Failed to load AI settings." };
+  }
+}
+
+/**
+ * Internal helper to get decrypted keys (Server-side only).
+ * Returns null if encryption key is not configured or settings don't exist,
+ * allowing getAiModel() to fallback to environment variables.
+ */
+export async function getDecryptedAiKeys() {
+  const encryptionKey = process.env.ENCRYPTION_KEY || "";
+  if (!encryptionKey || encryptionKey.length !== 32) {
+    // No encryption key configured — return null to allow env var fallback
+    return null;
+  }
+
+  try {
+    const settings = await prisma.aiSettings.findUnique({
+      where: { id: "default" },
+    });
+
+    if (!settings) return null;
+
+    return {
+      aiProvider: settings.aiProvider,
+      geminiKey: settings.encryptedGeminiKey ? decrypt(settings.encryptedGeminiKey, encryptionKey) : null,
+      openRouterKey: settings.encryptedOpenRouterKey ? decrypt(settings.encryptedOpenRouterKey, encryptionKey) : null,
+    };
+  } catch (error) {
+    console.error("Failed to decrypt AI keys:", error);
+    return null;
+  }
 }

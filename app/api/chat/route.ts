@@ -1,8 +1,7 @@
 import { auth } from "@/lib/auth";
-import { getAiConfig } from "@/lib/ai/gemini";
+import { getAiConfig, getAiModel } from "@/lib/ai/gemini";
 import { prisma } from "@/lib/prisma";
 import { frontendTools } from "@assistant-ui/react-ai-sdk";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 
 export const maxDuration = 60; // Allow longer generation times
@@ -318,12 +317,10 @@ export async function POST(req: Request) {
         }
 
         const config = await getAiConfig();
-        const googleApiKey =
-            process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? process.env.GEMINI_API_KEY;
-        if (!googleApiKey) {
-            return new Response("AI configuration missing", { status: 500 });
+        const model = await getAiModel();
+        if (!model) {
+            return new Response("AI configuration missing or invalid", { status: 500 });
         }
-        const google = createGoogleGenerativeAI({ apiKey: googleApiKey });
 
         const latestUserMessage = getLatestUserMessage(messages);
         const firstUserMessage = getFirstUserMessage(messages);
@@ -383,12 +380,11 @@ export async function POST(req: Request) {
         });
 
         const result = streamText({
-            model: google(config.model),
+            model,
             system: systemPrompt,
             messages: await convertToModelMessages(messages),
             temperature: config.temperature,
             maxOutputTokens: config.maxOutputTokens,
-            topP: config.topP,
             tools: frontendTools(body.tools ?? {}),
             onFinish: async ({ text }) => {
                 const content = text?.trim();

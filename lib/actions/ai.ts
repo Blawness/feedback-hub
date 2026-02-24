@@ -1,6 +1,7 @@
 "use server";
 
-import { ai, isAIEnabled, getAiConfig } from "@/lib/ai/gemini";
+import { getAiModel, isAIEnabled, getAiConfig } from "@/lib/ai/gemini";
+import { generateText as aiGenerateText } from "ai";
 import { prisma } from "@/lib/prisma";
 import {
     feedbackAnalyzerPrompt,
@@ -22,25 +23,21 @@ import { revalidatePath } from "next/cache";
 // ─── Helper ───────────────────────────────────────────────
 
 async function generateJSON<T>(prompt: string): Promise<T | null> {
-    if (!isAIEnabled() || !ai) return null;
+    if (!(await isAIEnabled())) return null;
 
     try {
         const config = await getAiConfig();
+        const model = await getAiModel();
+        if (!model) return null;
 
-        const response = await ai.models.generateContent({
-            model: config.model,
-            contents: config.systemInstruction
-                ? `${config.systemInstruction}\n\n${prompt}`
-                : prompt,
-            config: {
-                temperature: config.temperature,
-                maxOutputTokens: config.maxOutputTokens,
-                topP: config.topP,
-                topK: config.topK,
-            },
+        const { text } = await aiGenerateText({
+            model,
+            system: config.systemInstruction,
+            prompt,
+            temperature: config.temperature,
+            maxOutputTokens: config.maxOutputTokens,
         });
 
-        const text = response.text?.trim();
         if (!text) return null;
 
         // Strip markdown fences if present
@@ -62,25 +59,22 @@ async function generateJSON<T>(prompt: string): Promise<T | null> {
 }
 
 async function generateText(prompt: string): Promise<string | null> {
-    if (!isAIEnabled() || !ai) return null;
+    if (!(await isAIEnabled())) return null;
 
     try {
         const config = await getAiConfig();
+        const model = await getAiModel();
+        if (!model) return null;
 
-        const response = await ai.models.generateContent({
-            model: config.model,
-            contents: config.systemInstruction
-                ? `${config.systemInstruction}\n\n${prompt}`
-                : prompt,
-            config: {
-                temperature: config.temperature,
-                maxOutputTokens: config.maxOutputTokens,
-                topP: config.topP,
-                topK: config.topK,
-            },
+        const { text } = await aiGenerateText({
+            model,
+            system: config.systemInstruction,
+            prompt,
+            temperature: config.temperature,
+            maxOutputTokens: config.maxOutputTokens,
         });
 
-        const result = response.text?.trim() || null;
+        const result = text?.trim() || null;
 
         console.log("--- AI Text Request ---");
         console.log("Prompt:", prompt);
@@ -256,11 +250,13 @@ export async function chatWithAssistant(
     projectId?: string,
     history: { role: "user" | "assistant"; content: string }[] = []
 ) {
-    if (!isAIEnabled() || !ai) {
+    if (!(await isAIEnabled())) {
         return { error: "AI is not available." };
     }
 
     const config = await getAiConfig();
+    const model = await getAiModel();
+    if (!model) return { error: "AI model not available." };
 
     // Build project context
     const feedbacks = await prisma.feedback.findMany({
@@ -302,28 +298,18 @@ ${tasks.map((t) => `- [${t.status}] [${t.priority}] ${t.title}`).join("\n")}
     }
 
     try {
-        const contents = [
-            { role: "user" as const, parts: [{ text: systemPrompt }] },
-            { role: "model" as const, parts: [{ text: "Understood. I'm ready to help you with your Feedback Hub." }] },
-            ...history.map((h) => ({
-                role: (h.role === "assistant" ? "model" : "user") as "user" | "model",
-                parts: [{ text: h.content }],
-            })),
-            { role: "user" as const, parts: [{ text: message }] },
-        ];
-
-        const response = await ai.models.generateContent({
-            model: config.model,
-            contents,
-            config: {
-                temperature: config.temperature,
-                maxOutputTokens: config.maxOutputTokens,
-                topP: config.topP,
-                topK: config.topK,
-            },
+        const { text } = await aiGenerateText({
+            model,
+            system: systemPrompt,
+            messages: history.map((h) => ({
+                role: h.role as "user" | "assistant",
+                content: h.content,
+            })).concat([{ role: "user", content: message }]),
+            temperature: config.temperature,
+            maxOutputTokens: config.maxOutputTokens,
         });
 
-        return { success: true, reply: response.text?.trim() || "No response." };
+        return { success: true, reply: text.trim() || "No response." };
     } catch (error) {
         console.error("Chat failed:", error);
         return { error: "Failed to get AI response." };
@@ -337,11 +323,13 @@ export async function chatWithTaskAssistant(
     message: string,
     history: { role: "user" | "assistant"; content: string }[] = []
 ) {
-    if (!isAIEnabled() || !ai) {
+    if (!(await isAIEnabled())) {
         return { error: "AI is not available." };
     }
 
     const config = await getAiConfig();
+    const model = await getAiModel();
+    if (!model) return { error: "AI model not available." };
 
     // Fetch task details with related data
     const task = await prisma.task.findUnique({
@@ -409,26 +397,18 @@ Rules:
 `;
 
     try {
-        const contents = [
-            { role: "user" as const, parts: [{ text: systemPrompt }] },
-            { role: "model" as const, parts: [{ text: "Understood. I have the task context and am ready to assist." }] },
-            ...history.map((h) => ({
-                role: (h.role === "assistant" ? "model" : "user") as "user" | "model",
-                parts: [{ text: h.content }],
-            })),
-            { role: "user" as const, parts: [{ text: message }] },
-        ];
-
-        const response = await ai.models.generateContent({
-            model: config.model,
-            contents,
-            config: {
-                temperature: config.temperature,
-                maxOutputTokens: config.maxOutputTokens,
-            },
+        const { text } = await aiGenerateText({
+            model,
+            system: systemPrompt,
+            messages: history.map((h) => ({
+                role: h.role as "user" | "assistant",
+                content: h.content,
+            })).concat([{ role: "user", content: message }]),
+            temperature: config.temperature,
+            maxOutputTokens: config.maxOutputTokens,
         });
 
-        return { success: true, reply: response.text?.trim() || "No response." };
+        return { success: true, reply: text.trim() || "No response." };
     } catch (error) {
         console.error("Task Chat failed:", error);
         return { error: "Failed to get AI response." };

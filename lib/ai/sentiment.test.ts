@@ -7,9 +7,26 @@ vi.mock('ai', () => ({
   generateText: vi.fn(),
 }));
 
+// Mock the gemini module for model/config resolution
+const mockGetAiModel = vi.fn();
+const mockGetAiConfig = vi.fn();
+
+vi.mock('./gemini', () => ({
+  getAiModel: (...args: unknown[]) => mockGetAiModel(...args),
+  getAiConfig: (...args: unknown[]) => mockGetAiConfig(...args),
+}));
+
 describe('analyzeSentiment', () => {
+  const mockModel = { modelId: 'test-model' };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetAiModel.mockResolvedValue(mockModel);
+    mockGetAiConfig.mockResolvedValue({
+      temperature: 0.7,
+      maxOutputTokens: 2048,
+      systemInstruction: undefined,
+    });
   });
 
   it('should return a positive score for positive feedback', async () => {
@@ -59,13 +76,9 @@ describe('analyzeSentiment', () => {
     expect(score).toBe(0);
   });
 
-  it('should throw error if API key is missing', async () => {
-    const originalKey = process.env.GEMINI_API_KEY;
-    delete process.env.GEMINI_API_KEY;
-    delete process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  it('should throw error if AI model is not available', async () => {
+    mockGetAiModel.mockResolvedValue(null);
 
     await expect(analyzeSentiment("text")).rejects.toThrow("AI configuration missing");
-
-    process.env.GEMINI_API_KEY = originalKey;
   });
 });

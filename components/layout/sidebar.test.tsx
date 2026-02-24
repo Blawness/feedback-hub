@@ -14,6 +14,7 @@ vi.mock('lucide-react', () => ({
   Bot: () => <span>BotIcon</span>,
   BarChart3: () => <span>InsightsIcon</span>,
   Lightbulb: () => <span>IdeaPoolIcon</span>,
+  Sparkles: () => <span>AiSettingsIcon</span>,
 }));
 
 // Mock next-auth

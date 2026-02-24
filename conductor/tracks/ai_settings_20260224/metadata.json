@@ -1,0 +1,8 @@
+{
+  "track_id": "ai_settings_20260224",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-02-24T14:08:00Z",
+  "updated_at": "2026-02-24T14:08:00Z",
+  "description": "Tambah settings buat selec ai provider dan enter api key berdasarkan provider tsb dari settings. api disimpan ke db dan di enkripsi, (Gemini & Openrouter), settings di simpan di database"
+}
