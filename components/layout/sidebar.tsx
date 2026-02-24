@@ -12,7 +12,8 @@ import {
     BookText,
     Bot,
     BarChart3,
-    Lightbulb
+    Lightbulb,
+    Sparkles
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Logo } from "@/components/ui/logo";
@@ -25,6 +26,7 @@ const navigation = [
     { name: "Projects", href: "/projects", icon: FolderGit2 },
     { name: "Idea Pool", href: "/idea-pool", icon: Lightbulb },
     { name: "AI Chat", href: "/chat", icon: Bot },
+    { name: "AI Settings", href: "/settings/ai", icon: Sparkles },
     { name: "Settings", href: "/settings", icon: Settings },
     { name: "Docs", href: "/docs", icon: BookText },
 ];
