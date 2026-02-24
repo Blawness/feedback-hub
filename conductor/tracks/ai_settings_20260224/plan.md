@@ -27,9 +27,9 @@
 
 ## Phase 3: Integration & Refinement [checkpoint: pending]
 
-- [~] Task: Update AI features to use configured keys
-    - [ ] Refactor existing AI logic (e.g., feedback analysis, chat) to fetch the active provider and decrypted key from the database instead of environment variables.
-    - [ ] Ensure fallback behavior if no key is configured.
+- [x] Task: Update AI features to use configured keys `b298f27`
+    - [x] Refactor existing AI logic (e.g., feedback analysis, chat) to fetch the active provider and decrypted key from the database instead of environment variables.
+    - [x] Ensure fallback behavior if no key is configured.
 - [ ] Task: Final verification and mobile check
     - [ ] Verify form responsiveness and touch interactions on mobile.
     - [ ] Run full test suite and confirm >80% coverage for new code.
