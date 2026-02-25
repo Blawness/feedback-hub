@@ -2,6 +2,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { ChatAssistant } from "@/components/ai/chat-assistant";
 import { NotificationListener } from "@/components/shared/notification-listener";
+import { Suspense } from "react";
 
 export default function DashboardLayout({
     children,
@@ -18,7 +19,9 @@ export default function DashboardLayout({
                     {children}
                 </main>
             </div>
-            <ChatAssistant />
+            <Suspense fallback={null}>
+                <ChatAssistant />
+            </Suspense>
         </div>
     );
 }

@@ -7,7 +7,9 @@ export const metadata: Metadata = {
   description: "Configure AI providers and API keys.",
 };
 
-export default async function AiSettingsPage() {
+import { Suspense } from "react";
+
+async function AiSettingsLoader() {
   const result = await getAiSettingsAction();
 
   const settings = {
@@ -24,6 +26,10 @@ export default async function AiSettingsPage() {
     error: "error" in result ? result.error : undefined,
   };
 
+  return <AiSettingsCard initialSettings={settings} />;
+}
+
+export default function AiSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
@@ -32,7 +38,9 @@ export default async function AiSettingsPage() {
           Configure your preferred AI engine and securely manage API keys.
         </p>
       </div>
-      <AiSettingsCard initialSettings={settings} />
+      <Suspense fallback={<div className="h-[500px] rounded-xl border bg-card text-card-foreground shadow animate-pulse" />}>
+        <AiSettingsLoader />
+      </Suspense>
     </div>
   );
 }

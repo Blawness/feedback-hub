@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  cacheComponents: false, // Temporarily disabled due to build worker crash
+  cacheComponents: true,
   reactCompiler: true,
 };
 
