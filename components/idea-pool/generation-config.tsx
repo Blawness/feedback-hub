@@ -16,6 +16,7 @@ interface GenerationConfigProps {
 const categories = [
     "Any",
     "SaaS",
+    "Landing Page",
     "Web App",
     "Mobile App",
     "CLI Tool",
@@ -118,8 +119,8 @@ export function GenerationConfig({ config, onChange }: GenerationConfigProps) {
                                             onChange({ ...config, count: i });
                                         }}
                                         className={`text-[10px] font-medium transition-colors duration-150 hover:text-blue-500 cursor-pointer ${displayValue === i
-                                                ? "text-blue-600 dark:text-blue-400 font-bold"
-                                                : "text-gray-400 dark:text-gray-600"
+                                            ? "text-blue-600 dark:text-blue-400 font-bold"
+                                            : "text-gray-400 dark:text-gray-600"
                                             }`}
                                     >
                                         {i}

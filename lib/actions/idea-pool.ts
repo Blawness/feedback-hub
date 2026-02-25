@@ -130,6 +130,104 @@ export async function deleteSavedIdeaAction(ideaId: string) {
     }
 }
 
+export async function updateIdeaAction(ideaId: string, data: Partial<SavedIdeaInput>) {
+    try {
+        const user = await getCurrentUser();
+
+        if (!user || !user.id) {
+            return {
+                error: "Unauthorized",
+                status: 401,
+            };
+        }
+
+        // Verify ownership
+        const idea = await prisma.savedIdea.findUnique({
+            where: { id: ideaId },
+        });
+
+        if (!idea || idea.userId !== user.id) {
+            return {
+                error: "Idea not found or unauthorized",
+                status: 404,
+            };
+        }
+
+        const updatedIdea = await prisma.savedIdea.update({
+            where: { id: ideaId },
+            data,
+        });
+
+        revalidatePath("/idea-pool");
+
+        return {
+            success: true,
+            data: updatedIdea,
+        };
+    } catch (error) {
+        console.error("Error updating idea:", error);
+        return {
+            error: "Failed to update idea",
+            status: 500,
+        };
+    }
+}
+
+export async function refineIdeaAction(idea: SavedIdeaInput, instruction: string) {
+    if (!(await isAIEnabled())) {
+        return { error: "AI is not available. Please configure your API key in AI Settings." };
+    }
+
+    try {
+        const model = await getAiModel();
+        if (!model) return { error: "AI model not available." };
+
+        const systemInstruction = "You are an expert product architect. Your task is to refine or modify a software project idea based on specific user instructions. Keep the same JSON structure.";
+
+        const prompt = `Original Idea:
+${JSON.stringify(idea, null, 2)}
+
+User Instruction for Refinement:
+"${instruction}"
+
+Output the refined idea strictly as a JSON object matching this structure:
+{
+  "title": "String",
+  "category": "String",
+  "techStack": ["String"],
+  "description": "String",
+  "difficulty": "String",
+  "audience": "String",
+  "features": ["String"]
+}`;
+
+        const { text } = await generateText({
+            model,
+            system: systemInstruction,
+            prompt,
+            temperature: 0.7,
+        });
+
+        if (!text?.trim()) return { error: "No response from AI." };
+
+        const match = text.match(/\{[\s\S]*\}/);
+        if (!match) return { error: "AI response format was invalid." };
+
+        const parsedIdea = JSON.parse(match[0]) as SavedIdeaInput;
+
+        return {
+            success: true,
+            data: parsedIdea,
+        };
+    } catch (error) {
+        console.error("AI Idea Refinement failed:", error);
+        return {
+            error: "Failed to refine idea with AI.",
+            status: 500,
+        };
+    }
+}
+
 export async function generateIdeasAction(config: IdeaGenerationConfig = {}) {
     const { count = 3, category, difficulty, techStackFocus } = config;
 
@@ -144,7 +242,7 @@ export async function generateIdeasAction(config: IdeaGenerationConfig = {}) {
 
         // Force use the idea-generator template instruction if available, otherwise use a fallback
         const systemInstruction = aiConfig.systemInstruction ||
-            "You are a creative technical product manager and software architect. Your task is to generate innovative and practical software project ideas. For each idea, you must provide a catchy Title, a Category (e.g., SaaS, Web App, Mobile App, CLI Tool, Browser Extension), a recommended Tech Stack (as an array of strings), a detailed 1-2 paragraph Description, a Difficulty Level (Beginner, Intermediate, Advanced), a Target Audience description, and a list of 3-5 Key Features. Ensure ideas represent modern, in-demand technologies and solve real problems.";
+            "You are a creative technical product manager and software architect. Your task is to generate innovative and practical software project ideas. For each idea, you must provide a catchy Title, a Category (e.g., SaaS, Landing Page, Web App, Mobile App, CLI Tool, Browser Extension), a recommended Tech Stack (as an array of strings), a detailed 1-2 paragraph Description, a Difficulty Level (Beginner, Intermediate, Advanced), a Target Audience description, and a list of 3-5 Key Features. Ensure ideas represent modern, in-demand technologies and solve real problems.";
 
         let constraints = "";
         if (category) constraints += `- Category: ${category}\n`;

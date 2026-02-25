@@ -4,6 +4,8 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { encrypt, decrypt } from "@/lib/utils/encryption";
 import { revalidatePath } from "next/cache";
+import { generateText } from "ai";
+import { getAiModel } from "@/lib/ai/gemini";
 
 function resolveEncryptionKey(): string | null {
   const envKey = process.env.ENCRYPTION_KEY;
@@ -186,5 +188,58 @@ export async function getDecryptedAiKeys() {
   } catch (error) {
     console.error("Database error in getDecryptedAiKeys:", error);
     return null;
+  }
+}
+
+/**
+ * Sends a minimal prompt to the configured AI model and returns
+ * latency, token usage, model name, and the raw response.
+ */
+export async function testAiConnectionAction() {
+  try {
+    const settings = await prisma.aiSettings.findUnique({
+      where: { id: "default" },
+    });
+
+    const provider = settings?.aiProvider || "gemini";
+    const modelName = settings?.model || "gemini-2.0-flash";
+
+    const model = await getAiModel();
+    if (!model) {
+      return {
+        success: false as const,
+        error:
+          "AI model could not be resolved. Please ensure an API key is configured and the AI module is enabled.",
+      };
+    }
+
+    const start = performance.now();
+
+    const { text, usage } = await generateText({
+      model,
+      prompt: "Respond with only: Hello",
+      temperature: 0,
+      maxOutputTokens: 32,
+    });
+
+    const latencyMs = Math.round(performance.now() - start);
+
+    return {
+      success: true as const,
+      latencyMs,
+      provider,
+      model: modelName,
+      response: text.trim(),
+      tokenUsage: {
+        prompt: usage?.inputTokens ?? 0,
+        completion: usage?.outputTokens ?? 0,
+        total: usage?.totalTokens ?? 0,
+      },
+    };
+  } catch (error) {
+    console.error("AI connection test failed:", error);
+    const message =
+      error instanceof Error ? error.message : "Unknown error occurred";
+    return { success: false as const, error: message };
   }
 }

@@ -3,7 +3,7 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bookmark, BookmarkCheck, Code, Target, Zap } from "lucide-react";
+import { Bookmark, BookmarkCheck, Code, Target, Zap, Pencil } from "lucide-react";
 
 export interface IdeaCardProps {
     id?: string;
@@ -17,6 +17,7 @@ export interface IdeaCardProps {
     isSaved?: boolean;
     onSave?: () => void;
     onUnsave?: () => void;
+    onEdit?: () => void;
     isLoading?: boolean;
 }
 
@@ -31,6 +32,7 @@ export function IdeaCard({
     isSaved = false,
     onSave,
     onUnsave,
+    onEdit,
     isLoading = false,
 }: IdeaCardProps) {
 
@@ -105,16 +107,27 @@ export function IdeaCard({
 
             <CardFooter className="pt-0 pb-4">
                 {isSaved ? (
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        className="w-full text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40"
-                        onClick={onUnsave}
-                        disabled={isLoading}
-                    >
-                        <BookmarkCheck className="h-4 w-4 mr-2" />
-                        Added to Favorites
-                    </Button>
+                    <div className="flex gap-2 w-full">
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            className="flex-1 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40"
+                            onClick={onUnsave}
+                            disabled={isLoading}
+                        >
+                            <BookmarkCheck className="h-4 w-4 mr-2" />
+                            Saved
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="px-3"
+                            onClick={onEdit}
+                            disabled={isLoading}
+                        >
+                            <Pencil className="h-4 w-4" />
+                        </Button>
+                    </div>
                 ) : (
                     <Button
                         variant="outline"

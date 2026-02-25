@@ -9,11 +9,8 @@ import { GenerationConfig } from "./generation-config";
 import { generateIdeasAction, saveIdeaAction, deleteSavedIdeaAction, SavedIdeaInput, IdeaGenerationConfig } from "@/lib/actions/idea-pool";
 import { useToast } from "@/hooks/use-toast";
 
-type SavedIdea = SavedIdeaInput & { id: string };
-
-interface IdeaPoolClientProps {
-    initialSavedIdeas: SavedIdea[];
-}
+import { IdeaPoolClientProps, SavedIdea } from "./idea-pool-types";
+import { EditIdeaModal } from "./edit-idea-modal";
 
 export function IdeaPoolClient({ initialSavedIdeas }: IdeaPoolClientProps) {
     const { toast } = useToast();
@@ -28,9 +25,22 @@ export function IdeaPoolClient({ initialSavedIdeas }: IdeaPoolClientProps) {
         difficulty: undefined,
     });
 
+    // Edit modal state
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingIdea, setEditingIdea] = useState<SavedIdea | null>(null);
+
     // Loading states
     const [isGenerating, setIsGenerating] = useState(false);
     const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+
+    const handleEdit = (idea: SavedIdea) => {
+        setEditingIdea(idea);
+        setIsEditModalOpen(true);
+    };
+
+    const handleUpdateSuccess = (updatedIdea: SavedIdea) => {
+        setSavedIdeas(prev => prev.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea));
+    };
 
     const handleGenerate = async () => {
         setIsGenerating(true);
@@ -241,6 +251,7 @@ export function IdeaPoolClient({ initialSavedIdeas }: IdeaPoolClientProps) {
                                         isLoading={processingIds.has(loadingId) || (matchedSavedIdea && processingIds.has(matchedSavedIdea.id))}
                                         onSave={() => handleSave(idea, idx)}
                                         onUnsave={() => matchedSavedIdea && handleUnsave(matchedSavedIdea.id)}
+                                        onEdit={() => matchedSavedIdea && handleEdit(matchedSavedIdea)}
                                     />
                                 );
                             })}
@@ -271,12 +282,25 @@ export function IdeaPoolClient({ initialSavedIdeas }: IdeaPoolClientProps) {
                                     isSaved={true}
                                     isLoading={processingIds.has(idea.id)}
                                     onUnsave={() => handleUnsave(idea.id)}
+                                    onEdit={() => handleEdit(idea)}
                                 />
                             ))}
                         </div>
                     )}
                 </TabsContent>
             </Tabs>
+
+            {editingIdea && (
+                <EditIdeaModal
+                    idea={editingIdea}
+                    isOpen={isEditModalOpen}
+                    onClose={() => {
+                        setIsEditModalOpen(false);
+                        setEditingIdea(null);
+                    }}
+                    onSuccess={handleUpdateSuccess}
+                />
+            )}
         </div>
     );
 }
