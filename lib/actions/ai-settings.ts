@@ -142,6 +142,43 @@ export async function getAiSettingsAction() {
   }
 }
 
+import { cacheLife } from "next/cache";
+
+/**
+ * Fetches available models from OpenRouter.
+ * Uses Next.js 16 Server-side caching to prevent rate-limits and ensure fast loads.
+ */
+export async function getOpenRouterModelsAction() {
+  "use cache";
+  cacheLife("hours");
+
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/models");
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch models: ${response.statusText}`);
+    }
+
+    const { data } = await response.json();
+
+    if (!Array.isArray(data)) {
+      return [];
+    }
+
+    // Map and sort alphabetically
+    return data
+      .map((model: any) => ({
+        id: model.id,
+        name: model.name || model.id,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error) {
+    console.error("Error fetching OpenRouter models:", error);
+    return [];
+  }
+}
+
+
 /**
  * Internal helper to get decrypted keys (Server-side only).
  * Returns null if encryption key is not configured or settings don't exist.

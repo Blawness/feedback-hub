@@ -1,16 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { updateAiSettingsAction, testAiConnectionAction } from "@/lib/actions/ai-settings";
+import { updateAiSettingsAction, testAiConnectionAction, getOpenRouterModelsAction } from "@/lib/actions/ai-settings";
 import { toast } from "sonner";
-import { Loader2, Key, Info, CheckCircle2, Zap, Clock, Hash, MessageSquare, AlertCircle } from "lucide-react";
+import { Loader2, Key, Info, CheckCircle2, Zap, Clock, Hash, MessageSquare, AlertCircle, Check, ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -51,6 +54,37 @@ export function AiSettingsCard({ initialSettings }: AiSettingsCardProps) {
   const [topK, setTopK] = useState(initialSettings.topK);
   const [masterPrompt, setMasterPrompt] = useState(initialSettings.masterPrompt);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+
+  const [openRouterModels, setOpenRouterModels] = useState<{ id: string; name: string }[]>([]);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [comboboxOpen, setComboboxOpen] = useState(false);
+
+  useEffect(() => {
+    if (provider === "openrouter" && isAdvancedOpen && openRouterModels.length === 0) {
+      const fetchModels = async () => {
+        setIsFetchingModels(true);
+        try {
+          const models = await getOpenRouterModelsAction();
+          setOpenRouterModels(models);
+        } catch (error) {
+          console.error("Failed to fetch models", error);
+        } finally {
+          setIsFetchingModels(false);
+        }
+      };
+      fetchModels();
+    }
+  }, [provider, isAdvancedOpen, openRouterModels.length]);
+
+  const geminiModels = [
+    { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro (Preview)" },
+    { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash" },
+    { id: "gemini-2.0-flash-lite", name: "Gemini 2.0 Flash Lite" },
+    { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro" },
+    { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash" },
+  ];
+
+  const currentModels = provider === "gemini" ? geminiModels : openRouterModels;
 
   const [isLoading, setIsLoading] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -332,12 +366,62 @@ export function AiSettingsCard({ initialSettings }: AiSettingsCardProps) {
             <CollapsibleContent className="space-y-6 rounded-md border p-4">
               <div className="space-y-4">
                 <Label htmlFor="model-select">Model Name</Label>
-                <Input
-                  id="model-name"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  placeholder="e.g. gemini-2.0-flash"
-                />
+                <div className="flex w-full">
+                  <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={comboboxOpen}
+                        className="w-full justify-between font-mono"
+                      >
+                        {model
+                          ? currentModels.find((m) => m.id === model)?.name || model
+                          : "Select a model..."}
+                        {isFetchingModels ? (
+                          <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
+                        ) : (
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder={`Search ${provider === "gemini" ? "Gemini" : "OpenRouter"} models...`} />
+                        <CommandList>
+                          <CommandEmpty>
+                            {isFetchingModels ? "Loading models..." : "No model found."}
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {currentModels.map((m) => (
+                              <CommandItem
+                                key={m.id}
+                                value={`${m.name} ${m.id}`}
+                                onSelect={() => {
+                                  setModel(m.id);
+                                  setComboboxOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4 shrink-0",
+                                    model === m.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex flex-col text-left">
+                                  <span className="font-medium">{m.name}</span>
+                                  {m.name !== m.id && (
+                                    <span className="text-xs text-muted-foreground whitespace-break-spaces">{m.id}</span>
+                                  )}
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <p className="text-xs text-muted-foreground">
                   The specific model identifier to use with the selected provider.
                 </p>
