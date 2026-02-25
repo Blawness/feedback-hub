@@ -17,18 +17,22 @@ async function FeedbackDetailContent({ id }: { id: string }) {
     }
 }
 
-export default async function FeedbackDetailPage({
+export default function FeedbackDetailPage({
     params,
 }: {
     params: Promise<{ id: string }>;
 }) {
-    const { id } = await params;
-
     return (
         <div className="space-y-6">
             <Suspense fallback={<Skeleton className="h-[600px] rounded-xl" />}>
-                <FeedbackDetailContent id={id} />
+                <FeedbackDetailWrapper params={params} />
             </Suspense>
         </div>
     );
 }
+
+async function FeedbackDetailWrapper({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    return <FeedbackDetailContent id={id} />;
+}
+

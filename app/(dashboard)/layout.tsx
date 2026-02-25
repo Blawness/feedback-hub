@@ -11,10 +11,16 @@ export default function DashboardLayout({
 }) {
     return (
         <div className="flex min-h-screen bg-background">
-            <NotificationListener />
-            <Sidebar />
+            <Suspense fallback={null}>
+                <NotificationListener />
+            </Suspense>
+            <Suspense fallback={<div className="flex flex-col w-64 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 h-screen sticky top-0" />}>
+                <Sidebar />
+            </Suspense>
             <div className="flex-1 flex flex-col">
-                <Header />
+                <Suspense fallback={<header className="h-16 border-b border-gray-200 dark:border-gray-800" />}>
+                    <Header />
+                </Suspense>
                 <main className="flex-1 p-6 lg:p-8 relative">
                     {children}
                 </main>

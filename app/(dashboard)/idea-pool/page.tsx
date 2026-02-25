@@ -9,7 +9,20 @@ export const metadata: Metadata = {
     description: "Generate and save creative software project ideas using AI.",
 };
 
-export default async function IdeaPoolPage() {
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+
+export default function IdeaPoolPage() {
+    return (
+        <div className="flex-1 space-y-4 p-8 pt-6 max-h-screen overflow-y-auto">
+            <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-xl" />}>
+                <IdeaPoolContent />
+            </Suspense>
+        </div>
+    );
+}
+
+async function IdeaPoolContent() {
     const user = await getCurrentUser();
 
     if (!user) {
@@ -18,9 +31,5 @@ export default async function IdeaPoolPage() {
 
     const { data: savedIdeas = [] } = await getSavedIdeasAction();
 
-    return (
-        <div className="flex-1 space-y-4 p-8 pt-6 max-h-screen overflow-y-auto">
-            <IdeaPoolClient initialSavedIdeas={savedIdeas as any} />
-        </div>
-    );
+    return <IdeaPoolClient initialSavedIdeas={savedIdeas as any} />;
 }
