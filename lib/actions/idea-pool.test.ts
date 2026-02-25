@@ -228,8 +228,8 @@ describe('Idea Pool Actions', () => {
 
             const result = await generateIdeasAction({ count: 1 });
 
-            expect(result.error).toBe('Failed to generate ideas. Please try again.');
-            expect(result.status).toBe(500);
+            expect(result.error).toBe('AI response format was invalid.');
+            expect(result.status).toBeUndefined();
         });
 
         it('should clean markdown json blocks before parsing', async () => {

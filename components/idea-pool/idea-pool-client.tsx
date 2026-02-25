@@ -204,7 +204,7 @@ export function IdeaPoolClient({ initialSavedIdeas }: IdeaPoolClientProps) {
                             </div>
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No Ideas Yet</h3>
                             <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-6">
-                                Click the generate button to brainstorm fresh project concepts using Gemini 2.0 Flash AI.
+                                Click the generate button to brainstorm fresh project concepts using AI.
                             </p>
                             <Button
                                 onClick={handleGenerate}

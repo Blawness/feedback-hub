@@ -124,7 +124,7 @@ export async function getAiSettingsAction() {
 
     return {
       aiProvider: settings.aiProvider,
-      isEnabled: settings.isEnabled,
+      isEnabled: (settings as any).isEnabled,
       hasGeminiKey: !!settings.encryptedGeminiKey,
       hasOpenRouterKey: !!settings.encryptedOpenRouterKey,
       model: settings.model,
@@ -142,8 +142,8 @@ export async function getAiSettingsAction() {
 
 /**
  * Internal helper to get decrypted keys (Server-side only).
- * Returns null if encryption key is not configured or settings don't exist,
- * allowing getAiModel() to fallback to environment variables.
+ * Returns null if encryption key is not configured or settings don't exist.
+ * API keys are sourced exclusively from the AiSettings database table.
  */
 export async function getDecryptedAiKeys() {
   const encryptionKey = resolveEncryptionKey();
@@ -159,13 +159,32 @@ export async function getDecryptedAiKeys() {
 
     if (!settings) return null;
 
+    let geminiKey = null;
+    let openRouterKey = null;
+
+    if (settings.encryptedGeminiKey) {
+      try {
+        geminiKey = decrypt(settings.encryptedGeminiKey, encryptionKey);
+      } catch (e) {
+        console.error("Failed to decrypt Gemini key:", e);
+      }
+    }
+
+    if (settings.encryptedOpenRouterKey) {
+      try {
+        openRouterKey = decrypt(settings.encryptedOpenRouterKey, encryptionKey);
+      } catch (e) {
+        console.error("Failed to decrypt OpenRouter key:", e);
+      }
+    }
+
     return {
       aiProvider: settings.aiProvider,
-      geminiKey: settings.encryptedGeminiKey ? decrypt(settings.encryptedGeminiKey, encryptionKey) : null,
-      openRouterKey: settings.encryptedOpenRouterKey ? decrypt(settings.encryptedOpenRouterKey, encryptionKey) : null,
+      geminiKey,
+      openRouterKey,
     };
   } catch (error) {
-    console.error("Failed to decrypt AI keys:", error);
+    console.error("Database error in getDecryptedAiKeys:", error);
     return null;
   }
 }

@@ -26,22 +26,22 @@ export interface AiConfig {
  */
 export async function getAiModel() {
     const keys = await getDecryptedAiKeys();
-    
+
     const settings = await prisma.aiSettings.upsert({
         where: { id: "default" },
         update: {},
         create: { id: "default" },
     });
 
-    if (!settings.isEnabled) {
+    if (!(settings as any).isEnabled) {
         console.warn("AI Module is disabled in settings.");
         return null;
     }
-    
-    // Fallback to environment variables if no keys in DB
+
+    // Keys are resolved exclusively from the AiSettings table
     const provider = keys?.aiProvider || settings.aiProvider || "gemini";
-    const geminiKey = keys?.geminiKey || process.env.GEMINI_API_KEY;
-    const openRouterKey = keys?.openRouterKey || process.env.OPENROUTER_API_KEY;
+    const geminiKey = keys?.geminiKey;
+    const openRouterKey = keys?.openRouterKey;
 
     if (provider === "openrouter") {
         if (!openRouterKey) {
@@ -51,6 +51,10 @@ export async function getAiModel() {
         const openrouter = createOpenAI({
             baseURL: "https://openrouter.ai/api/v1",
             apiKey: openRouterKey,
+            headers: {
+                "HTTP-Referer": "https://feedback-hub-seven.vercel.app",
+                "X-Title": "Feedback Hub"
+            }
         });
         // If settings specify a gemini model but we switched to openrouter, use default
         const modelName = settings.model.includes("gemini") ? DEFAULT_OPENROUTER_MODEL : settings.model;

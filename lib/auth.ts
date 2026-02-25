@@ -7,7 +7,7 @@ import { z } from "zod";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     adapter: PrismaAdapter(prisma),
-    trustHost: process.env.NODE_ENV === "development" || process.env.AUTH_TRUST_HOST === "true",
+    trustHost: true,
     session: { strategy: "jwt" },
     pages: {
         signIn: "/login",

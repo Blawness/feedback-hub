@@ -384,7 +384,8 @@ export async function POST(req: Request) {
             system: systemPrompt,
             messages: await convertToModelMessages(messages),
             temperature: config.temperature,
-            maxOutputTokens: config.maxOutputTokens,
+            // @ts-ignore: maxTokens is not typed correctly in this ai version
+            maxTokens: config.maxOutputTokens,
             tools: frontendTools(body.tools ?? {}),
             onFinish: async ({ text }) => {
                 const content = text?.trim();

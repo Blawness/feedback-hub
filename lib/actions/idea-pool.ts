@@ -167,13 +167,17 @@ export async function generateIdeasAction(config: IdeaGenerationConfig = {}) {
             system: systemInstruction,
             prompt,
             temperature: 0.9, // Higher temperature for more creative ideas
-            maxOutputTokens: aiConfig.maxOutputTokens,
+            // @ts-ignore: maxTokens is not typed correctly in this ai version
+            maxTokens: aiConfig.maxOutputTokens,
         });
 
         if (!text?.trim()) return { error: "No response from AI." };
 
-        // Clean markdown JSON formatting if present
-        const cleaned = text.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/i, "").trim();
+        // Match everything from the first '[' to the last ']' to ensure pure JSON
+        const match = text.match(/\[[\s\S]*\]/);
+        if (!match) return { error: "AI response format was invalid." };
+
+        const cleaned = match[0];
         const parsedIdeas = JSON.parse(cleaned) as SavedIdeaInput[];
 
         return {

@@ -18,7 +18,7 @@ vi.mock("sonner", () => ({
 }));
 
 describe("AiSettingsCard", () => {
-  const initialSettings = {
+  const initialSettings: any = {
     aiProvider: "gemini",
     hasGeminiKey: true,
     hasOpenRouterKey: false,
@@ -34,14 +34,14 @@ describe("AiSettingsCard", () => {
     expect(screen.getByText("AI Provider Configuration")).toBeInTheDocument();
     expect(screen.getByText("Google Gemini")).toBeInTheDocument();
     expect(screen.getByText("OpenRouter")).toBeInTheDocument();
-    
+
     // Check for masked key indicator
     expect(screen.getByPlaceholderText("••••••••••••••••")).toBeInTheDocument();
   });
 
   it("allows changing the provider", () => {
     render(<AiSettingsCard initialSettings={initialSettings} />);
-    
+
     const openRouterText = screen.getByText("OpenRouter");
     fireEvent.click(openRouterText);
   });
@@ -50,10 +50,10 @@ describe("AiSettingsCard", () => {
     vi.mocked(updateAiSettingsAction).mockResolvedValue({ success: true });
 
     render(<AiSettingsCard initialSettings={initialSettings} />);
-    
+
     const geminiInput = screen.getByLabelText(/Gemini API Key/);
     fireEvent.change(geminiInput, { target: { value: "new-key" } });
-    
+
     const saveButton = screen.getByText("Save AI Configuration");
     fireEvent.click(saveButton);
 
@@ -69,7 +69,7 @@ describe("AiSettingsCard", () => {
     vi.mocked(updateAiSettingsAction).mockResolvedValue({ error: "Failed to save" });
 
     render(<AiSettingsCard initialSettings={initialSettings} />);
-    
+
     const saveButton = screen.getByText("Save AI Configuration");
     fireEvent.click(saveButton);
 
