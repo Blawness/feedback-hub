@@ -6,7 +6,8 @@
     "dev": "npx kill-port 3000 && next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint -o logs/eslint.log",
+    "typecheck": "tsc --noEmit > logs/tsc.log",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
