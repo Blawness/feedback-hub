@@ -206,3 +206,76 @@ export async function fetchGitHubIssueComments(
         updated_at: c.updated_at,
     }));
 }
+
+// ─── Task ↔ GitHub Sync ──────────────────────────────────
+
+interface TaskForGitHub {
+    id: string;
+    title: string;
+    description: string | null;
+    priority: string;
+    status: string;
+    githubIssueNumber: number | null;
+}
+
+/** Create a new GitHub issue for a task */
+export async function createGitHubIssueForTask(
+    project: ProjectForGitHub,
+    task: TaskForGitHub
+): Promise<{ number: number; url: string } | null> {
+    const octokit = getOctokit();
+    if (!octokit || !project.githubRepoFullName) return null;
+
+    const { owner, repo } = parseRepo(project.githubRepoFullName);
+
+    const body = `**Priority:** ${task.priority}
+**Status:** ${task.status}
+**Task ID:** ${task.id}
+
+${task.description || "_No description_"}
+
+---
+*Created via Feedback Hub (Task)*`;
+
+    const issue = await octokit.rest.issues.create({
+        owner,
+        repo,
+        title: `[TASK] ${task.title}`,
+        body,
+        labels: [task.priority, "feedback-hub", "task"],
+    });
+
+    return { number: issue.data.number, url: issue.data.html_url };
+}
+
+/** Sync the open/closed state of a GitHub issue linked to a task */
+export async function syncTaskGitHubState(
+    project: ProjectForGitHub,
+    issueNumber: number,
+    taskStatus: string
+): Promise<boolean> {
+    const octokit = getOctokit();
+    if (!octokit || !project.githubRepoFullName) return false;
+
+    const { owner, repo } = parseRepo(project.githubRepoFullName);
+
+    const state: "open" | "closed" = taskStatus === "done" ? "closed" : "open";
+    let state_reason: "completed" | "not_planned" | "reopened" | undefined;
+
+    if (state === "closed") {
+        state_reason = "completed";
+    } else {
+        state_reason = "reopened";
+    }
+
+    await octokit.rest.issues.update({
+        owner,
+        repo,
+        issue_number: issueNumber,
+        state,
+        state_reason,
+    } as any);
+
+    return true;
+}
+

@@ -8,15 +8,19 @@ export async function getTasks({
     status,
     page = 1,
     limit = 50,
+    parentTaskId,
 }: {
     projectId?: string;
     status?: string;
     page?: number;
     limit?: number;
+    parentTaskId?: string | null;
 } = {}) {
     const where = {
         ...(projectId ? { projectId } : {}),
         ...(status ? { status } : {}),
+        // By default only show top-level tasks (no parent)
+        parentTaskId: parentTaskId === undefined ? null : parentTaskId,
     };
 
     const tasks = await prisma.task.findMany({
@@ -28,11 +32,13 @@ export async function getTasks({
             project: { select: { id: true, name: true } },
             assignee: { select: { id: true, name: true } },
             feedback: { select: { id: true, title: true, type: true, agentPrompt: true } },
+            _count: { select: { subtasks: true } },
         },
     });
 
     return tasks;
 }
+
 
 export async function createTask(formData: FormData) {
     const title = formData.get("title") as string;
@@ -85,7 +91,7 @@ export async function updateTaskStatus(id: string, status: string) {
             data: { status: "RESOLVED" },
         });
 
-        // Sync with GitHub if applicable
+        // Sync feedback's GitHub issue if applicable
         if (task.feedback.githubIssueNumber && task.project.githubRepoFullName) {
             const { syncGitHubIssueState } = await import("@/lib/github-issues");
             await syncGitHubIssueState(
@@ -94,6 +100,16 @@ export async function updateTaskStatus(id: string, status: string) {
                 "RESOLVED"
             );
         }
+    }
+
+    // Sync task's own GitHub issue if applicable
+    if (task.githubIssueNumber && task.project.githubRepoFullName) {
+        const { syncTaskGitHubState } = await import("@/lib/github-issues");
+        await syncTaskGitHubState(
+            { githubRepoFullName: task.project.githubRepoFullName },
+            task.githubIssueNumber,
+            status
+        );
     }
 
     revalidatePath("/tasks");

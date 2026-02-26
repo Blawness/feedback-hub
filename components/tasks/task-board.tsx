@@ -8,18 +8,21 @@ import {
     useSensors,
     PointerSensor,
     TouchSensor,
-    closestCorners,
+    KeyboardSensor,
+    closestCenter,
     DragStartEvent,
     DragOverEvent,
     DragEndEvent,
     defaultDropAnimationSideEffects,
     DropAnimation,
     UniqueIdentifier,
+    useDroppable,
 } from "@dnd-kit/core";
 import {
     SortableContext,
     verticalListSortingStrategy,
     useSortable,
+    sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { createPortal } from "react-dom";
@@ -33,7 +36,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Clock, FolderGit2, Bug, Lightbulb, TrendingUp, HelpCircle, Eye } from "lucide-react";
+import { Trash2, Clock, FolderGit2, Bug, Lightbulb, TrendingUp, HelpCircle, Eye, Zap, GitFork } from "lucide-react";
 import { updateTaskStatus, deleteTask } from "@/lib/actions/tasks";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -65,9 +68,16 @@ export interface Task {
     priority: string;
     dueDate: Date | null;
     createdAt: Date;
+    storyPoints: number | null;
+    estimatedHours: number | null;
+    actualHoursSpent: number | null;
+    parentTaskId: string | null;
+    githubIssueNumber: number | null;
+    githubUrl: string | null;
     project: { id: string; name: string };
     assignee: { id: string; name: string } | null;
     feedback: { id: string; title: string; type: string; agentPrompt?: string | null } | null;
+    _count: { subtasks: number };
 }
 
 interface Project {
@@ -126,10 +136,18 @@ export function TaskBoard({ tasks: initialTasks, projects }: { tasks: Task[]; pr
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                distance: 5,
+                distance: 8,
             },
         }),
-        useSensor(TouchSensor)
+        useSensor(TouchSensor, {
+            activationConstraint: {
+                delay: 200,
+                tolerance: 6,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
     );
 
     const columns = useMemo(() => {
@@ -284,7 +302,7 @@ export function TaskBoard({ tasks: initialTasks, projects }: { tasks: Task[]; pr
     return (
         <DndContext
             sensors={sensors}
-            collisionDetection={closestCorners}
+            collisionDetection={closestCenter}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
@@ -345,17 +363,16 @@ function TaskColumn({
     onStatusChange: (id: string, status: string) => void;
     isPending: boolean;
 }) {
-    const { setNodeRef } = useSortable({
+    const { setNodeRef, isOver } = useDroppable({
         id: column.id,
         data: {
             type: "Column",
             column,
         },
-        disabled: true, // Columns themselves are not sortable/draggable
     });
 
     return (
-        <div ref={setNodeRef} className="space-y-3 h-full flex flex-col rounded-xl bg-gray-50/50 dark:bg-gray-900/50 p-2">
+        <div ref={setNodeRef} className={cn("space-y-3 h-full flex flex-col rounded-xl p-2 transition-colors duration-200", isOver ? "bg-primary/5 ring-2 ring-primary/20" : "bg-gray-50/50 dark:bg-gray-900/50")}>
             <div className={`rounded-lg px-3 py-2 ${column.color}`}>
                 <h3 className="text-sm font-semibold flex items-center gap-2">
                     {column.label}
@@ -541,6 +558,18 @@ function TaskCard({
                             </span>
                         );
                     })()}
+                    {task.storyPoints != null && (
+                        <span className="flex items-center gap-1 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 px-1.5 py-0.5 rounded font-semibold">
+                            <Zap className="h-3 w-3" />
+                            {task.storyPoints} SP
+                        </span>
+                    )}
+                    {task._count?.subtasks > 0 && (
+                        <span className="flex items-center gap-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded font-medium">
+                            <GitFork className="h-3 w-3" />
+                            {task._count.subtasks}
+                        </span>
+                    )}
                     <span className="flex items-center gap-1 bg-secondary/50 px-1.5 py-0.5 rounded">
                         <FolderGit2 className="h-3 w-3" />
                         {task.project.name}
