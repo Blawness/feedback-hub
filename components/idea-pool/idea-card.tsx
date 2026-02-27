@@ -3,7 +3,7 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bookmark, BookmarkCheck, Code, Target, Zap, Pencil } from "lucide-react";
+import { Bookmark, BookmarkCheck, Code, Target, Zap, Pencil, FileText, Loader2 } from "lucide-react";
 
 export interface IdeaCardProps {
     id?: string;
@@ -18,7 +18,10 @@ export interface IdeaCardProps {
     onSave?: () => void;
     onUnsave?: () => void;
     onEdit?: () => void;
+    onGeneratePrd?: () => void;
     isLoading?: boolean;
+    isGeneratingPrd?: boolean;
+    hasPrd?: boolean;
 }
 
 export function IdeaCard({
@@ -33,7 +36,10 @@ export function IdeaCard({
     onSave,
     onUnsave,
     onEdit,
+    onGeneratePrd,
     isLoading = false,
+    isGeneratingPrd = false,
+    hasPrd = false,
 }: IdeaCardProps) {
 
     // Determine difficulty color map
@@ -107,26 +113,49 @@ export function IdeaCard({
 
             <CardFooter className="pt-0 pb-4">
                 {isSaved ? (
-                    <div className="flex gap-2 w-full">
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            className="flex-1 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40"
-                            onClick={onUnsave}
-                            disabled={isLoading}
-                        >
-                            <BookmarkCheck className="h-4 w-4 mr-2" />
-                            Saved
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="px-3"
-                            onClick={onEdit}
-                            disabled={isLoading}
-                        >
-                            <Pencil className="h-4 w-4" />
-                        </Button>
+                    <div className="flex flex-col gap-2 w-full">
+                        <div className="flex gap-2 w-full">
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                className="flex-1 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40"
+                                onClick={onUnsave}
+                                disabled={isLoading}
+                            >
+                                <BookmarkCheck className="h-4 w-4 mr-2" />
+                                Saved
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="px-3"
+                                onClick={onEdit}
+                                disabled={isLoading}
+                            >
+                                <Pencil className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        {onGeneratePrd && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full text-purple-600 border-purple-200 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-800 dark:hover:bg-purple-900/20"
+                                onClick={onGeneratePrd}
+                                disabled={isGeneratingPrd}
+                            >
+                                {isGeneratingPrd ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Generating PRD...
+                                    </>
+                                ) : (
+                                    <>
+                                        <FileText className="h-4 w-4 mr-2" />
+                                        {hasPrd ? "Regenerate PRD" : "Generate PRD"}
+                                    </>
+                                )}
+                            </Button>
+                        )}
                     </div>
                 ) : (
                     <Button

@@ -14,6 +14,7 @@ export type SavedIdeaInput = {
     difficulty: string;
     audience: string;
     features: string[];
+    contextPrompt?: string;
 };
 
 export type IdeaGenerationConfig = {
@@ -21,6 +22,7 @@ export type IdeaGenerationConfig = {
     category?: string;
     difficulty?: string;
     techStackFocus?: string[];
+    contextPrompt?: string;
 };
 
 export async function saveIdeaAction(idea: SavedIdeaInput) {
@@ -229,7 +231,7 @@ Output the refined idea strictly as a JSON object matching this structure:
 }
 
 export async function generateIdeasAction(config: IdeaGenerationConfig = {}) {
-    const { count = 3, category, difficulty, techStackFocus } = config;
+    const { count = 3, category, difficulty, techStackFocus, contextPrompt } = config;
 
     if (!(await isAIEnabled())) {
         return { error: "AI is not available. Please configure your API key in AI Settings." };
@@ -249,7 +251,14 @@ export async function generateIdeasAction(config: IdeaGenerationConfig = {}) {
         if (difficulty) constraints += `- Difficulty Level: ${difficulty}\n`;
         if (techStackFocus && techStackFocus.length > 0) constraints += `- Tech Stack Focus: ${techStackFocus.join(", ")}\n`;
 
-        const prompt = `Generate exactly ${count} unique software project ideas. ${constraints ? `Ensure the ideas follow these specific constraints:\n${constraints}\n` : ""}Return the result strictly as a JSON array of objects, where each object matches this structure:
+        let userContext = "";
+        if (contextPrompt?.trim()) {
+            userContext = `\n\nUser Context / Initial Prompt:\n"${contextPrompt.trim()}"\n\nUse the above context to tailor the generated ideas to the user's needs, niche, and preferences.`;
+        }
+
+        const prompt = `Generate exactly ${count} unique software project ideas. ${constraints ? `Ensure the ideas follow these specific constraints:\n${constraints}\n` : ""}${userContext}
+
+Return the result strictly as a JSON array of objects, where each object matches this structure:
 {
   "title": "String",
   "category": "String",
@@ -286,6 +295,126 @@ export async function generateIdeasAction(config: IdeaGenerationConfig = {}) {
         console.error("AI Idea Generation failed:", error);
         return {
             error: "Failed to generate ideas. Please try again.",
+            status: 500,
+        };
+    }
+}
+
+export async function generatePrdAction(ideaId: string) {
+    try {
+        const user = await getCurrentUser();
+
+        if (!user || !user.id) {
+            return { error: "Unauthorized", status: 401 };
+        }
+
+        const idea = await prisma.savedIdea.findUnique({
+            where: { id: ideaId },
+        });
+
+        if (!idea || idea.userId !== user.id) {
+            return { error: "Idea not found or unauthorized", status: 404 };
+        }
+
+        if (!(await isAIEnabled())) {
+            return { error: "AI is not available. Please configure your API key in AI Settings." };
+        }
+
+        const model = await getAiModel();
+        if (!model) return { error: "AI model not available. Please configure your API key in AI Settings." };
+
+        const systemInstruction = `You are an expert product manager and technical writer. Your task is to generate a comprehensive Product Requirements Document (PRD) in Markdown format. The PRD should be professional, detailed, and ready to use as a planning document for development.`;
+
+        const contextSection = idea.contextPrompt
+            ? `\n\nUser's Initial Context:\n"${idea.contextPrompt}"`
+            : "";
+
+        const prompt = `Generate a complete PRD (Product Requirements Document) in Markdown format for the following product idea:
+
+Title: ${idea.title}
+Category: ${idea.category}
+Description: ${idea.description}
+Target Audience: ${idea.audience}
+Difficulty: ${idea.difficulty}
+Tech Stack: ${idea.techStack.join(", ")}
+Key Features: ${idea.features.join(", ")}${contextSection}
+
+The PRD should include the following sections:
+1. **Overview** — Product vision and summary
+2. **Problem Statement** — What problem does this solve?
+3. **Goals & Objectives** — Key goals and success metrics
+4. **Target Users** — User personas and audience
+5. **Functional Requirements** — Detailed feature list with user stories
+6. **Non-Functional Requirements** — Performance, security, scalability
+7. **Tech Stack & Architecture** — Recommended technologies and high-level architecture
+8. **User Flow** — Key user journeys
+9. **Milestones & Timeline** — Phased development plan
+10. **Risks & Mitigations** — Potential challenges
+11. **Success Metrics** — KPIs and how to measure success
+
+Output the PRD in clean Markdown format. Be detailed and thorough.`;
+
+        const { text } = await generateText({
+            model,
+            system: systemInstruction,
+            prompt,
+            temperature: 0.7,
+            // @ts-ignore
+            maxTokens: 4096,
+        });
+
+        if (!text?.trim()) return { error: "No response from AI." };
+
+        // Upsert the PRD
+        const prd = await prisma.ideaPrd.upsert({
+            where: { ideaId },
+            update: { content: text.trim() },
+            create: { ideaId, content: text.trim() },
+        });
+
+        revalidatePath("/idea-pool");
+
+        return {
+            success: true,
+            data: prd,
+        };
+    } catch (error) {
+        console.error("PRD Generation failed:", error);
+        return {
+            error: "Failed to generate PRD. Please try again.",
+            status: 500,
+        };
+    }
+}
+
+export async function getPrdAction(ideaId: string) {
+    try {
+        const user = await getCurrentUser();
+
+        if (!user || !user.id) {
+            return { error: "Unauthorized", status: 401 };
+        }
+
+        const idea = await prisma.savedIdea.findUnique({
+            where: { id: ideaId },
+        });
+
+        if (!idea || idea.userId !== user.id) {
+            return { error: "Idea not found or unauthorized", status: 404 };
+        }
+
+        const prd = await prisma.ideaPrd.findUnique({
+            where: { ideaId },
+        });
+
+        return {
+            success: true,
+            data: prd,
+        };
+    } catch (error) {
+        console.error("Error fetching PRD:", error);
+        return {
+            error: "Failed to fetch PRD",
             status: 500,
         };
     }

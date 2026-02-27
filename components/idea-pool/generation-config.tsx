@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent } from "@/components/ui/card";
-import { Settings2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Settings2, MessageSquareText } from "lucide-react";
 
 interface GenerationConfigProps {
     config: IdeaGenerationConfig;
@@ -129,6 +130,23 @@ export function GenerationConfig({ config, onChange }: GenerationConfigProps) {
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <div className="mt-6 space-y-2">
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <MessageSquareText className="h-4 w-4" />
+                        Context Prompt
+                    </div>
+                    <Textarea
+                        placeholder="Deskripsikan produk, niche, atau ide awal kamu... (opsional)"
+                        value={config.contextPrompt || ""}
+                        onChange={(e) => onChange({ ...config, contextPrompt: e.target.value || undefined })}
+                        rows={3}
+                        className="bg-white dark:bg-gray-950 resize-none"
+                    />
+                    <p className="text-[11px] text-gray-400 dark:text-gray-600">
+                        AI akan menggunakan konteks ini untuk menghasilkan ide yang lebih relevan dengan kebutuhanmu.
+                    </p>
                 </div>
             </CardContent>
         </Card>

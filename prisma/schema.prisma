@@ -225,19 +225,35 @@ model ChatThread {
 }
 
 model SavedIdea {
-  id          String   @id @default(cuid())
-  title       String
-  description String   @db.Text
-  category    String
-  techStack   String[]
-  difficulty  String
-  audience    String
-  features    String[]
+  id            String   @id @default(cuid())
+  title         String
+  description   String   @db.Text
+  category      String
+  techStack     String[]
+  difficulty    String
+  audience      String
+  features      String[]
+  contextPrompt String?  @db.Text
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  prd IdeaPrd?
+
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+model IdeaPrd {
+  id      String @id @default(cuid())
+  content String @db.Text
+
+  ideaId String    @unique
+  idea   SavedIdea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ideaId])
 }

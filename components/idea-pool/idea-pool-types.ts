@@ -1,6 +1,6 @@
 import { SavedIdeaInput } from "@/lib/actions/idea-pool";
 
-export type SavedIdea = SavedIdeaInput & { id: string };
+export type SavedIdea = SavedIdeaInput & { id: string; contextPrompt?: string | null };
 
 export interface IdeaPoolClientProps {
     initialSavedIdeas: SavedIdea[];

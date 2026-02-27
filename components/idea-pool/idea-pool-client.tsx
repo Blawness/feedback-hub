@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import { Sparkles, Bookmark, RefreshCw, Loader2 } from "lucide-react";
-import { IdeaCard, IdeaCardProps } from "./idea-card";
+import { IdeaCard } from "./idea-card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GenerationConfig } from "./generation-config";
-import { generateIdeasAction, saveIdeaAction, deleteSavedIdeaAction, SavedIdeaInput, IdeaGenerationConfig } from "@/lib/actions/idea-pool";
+import { generateIdeasAction, saveIdeaAction, deleteSavedIdeaAction, generatePrdAction, SavedIdeaInput, IdeaGenerationConfig } from "@/lib/actions/idea-pool";
 import { useToast } from "@/hooks/use-toast";
 
 import { IdeaPoolClientProps, SavedIdea } from "./idea-pool-types";
 import { EditIdeaModal } from "./edit-idea-modal";
+import { PrdViewerModal } from "./prd-viewer-modal";
 
 export function IdeaPoolClient({ initialSavedIdeas }: IdeaPoolClientProps) {
     const { toast } = useToast();
@@ -28,6 +29,12 @@ export function IdeaPoolClient({ initialSavedIdeas }: IdeaPoolClientProps) {
     // Edit modal state
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingIdea, setEditingIdea] = useState<SavedIdea | null>(null);
+
+    // PRD modal state
+    const [isPrdModalOpen, setIsPrdModalOpen] = useState(false);
+    const [prdContent, setPrdContent] = useState("");
+    const [prdIdeaTitle, setPrdIdeaTitle] = useState("");
+    const [ideaPrdMap, setIdeaPrdMap] = useState<Record<string, boolean>>({});
 
     // Loading states
     const [isGenerating, setIsGenerating] = useState(false);
@@ -158,6 +165,47 @@ export function IdeaPoolClient({ initialSavedIdeas }: IdeaPoolClientProps) {
         return savedIdeas.some(idea => idea.title === title);
     };
 
+    const handleGeneratePrd = async (idea: SavedIdea) => {
+        const prdLoadingId = `prd-${idea.id}`;
+        setProcessingIds(prev => new Set(prev).add(prdLoadingId));
+
+        try {
+            const result = await generatePrdAction(idea.id);
+
+            if (result.error || !result.data) {
+                toast({
+                    title: "PRD Generation failed",
+                    description: result.error || "Unknown error occurred",
+                    variant: "destructive",
+                });
+                return;
+            }
+
+            setIdeaPrdMap(prev => ({ ...prev, [idea.id]: true }));
+            setPrdContent(result.data.content);
+            setPrdIdeaTitle(idea.title);
+            setIsPrdModalOpen(true);
+
+            toast({
+                title: "PRD Generated!",
+                description: "Your Product Requirements Document is ready.",
+            });
+        } catch (error) {
+            console.error(error);
+            toast({
+                title: "Error",
+                description: "Failed to generate PRD.",
+                variant: "destructive",
+            });
+        } finally {
+            setProcessingIds(prev => {
+                const next = new Set(prev);
+                next.delete(prdLoadingId);
+                return next;
+            });
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -283,6 +331,9 @@ export function IdeaPoolClient({ initialSavedIdeas }: IdeaPoolClientProps) {
                                     isLoading={processingIds.has(idea.id)}
                                     onUnsave={() => handleUnsave(idea.id)}
                                     onEdit={() => handleEdit(idea)}
+                                    onGeneratePrd={() => handleGeneratePrd(idea)}
+                                    isGeneratingPrd={processingIds.has(`prd-${idea.id}`)}
+                                    hasPrd={ideaPrdMap[idea.id] || false}
                                 />
                             ))}
                         </div>
@@ -301,6 +352,13 @@ export function IdeaPoolClient({ initialSavedIdeas }: IdeaPoolClientProps) {
                     onSuccess={handleUpdateSuccess}
                 />
             )}
+
+            <PrdViewerModal
+                isOpen={isPrdModalOpen}
+                onClose={() => setIsPrdModalOpen(false)}
+                prdContent={prdContent}
+                ideaTitle={prdIdeaTitle}
+            />
         </div>
     );
 }
