@@ -73,6 +73,13 @@ export async function getSavedIdeasAction() {
             where: {
                 userId: user.id,
             },
+            include: {
+                prd: {
+                    select: {
+                        id: true,
+                    }
+                }
+            },
             orderBy: {
                 createdAt: "desc",
             },

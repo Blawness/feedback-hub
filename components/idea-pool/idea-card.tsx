@@ -151,7 +151,7 @@ export function IdeaCard({
                                 ) : (
                                     <>
                                         <FileText className="h-4 w-4 mr-2" />
-                                        {hasPrd ? "Regenerate PRD" : "Generate PRD"}
+                                        {hasPrd ? "View PRD" : "Generate PRD"}
                                     </>
                                 )}
                             </Button>

@@ -6,7 +6,7 @@ import { IdeaCard } from "./idea-card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GenerationConfig } from "./generation-config";
-import { generateIdeasAction, saveIdeaAction, deleteSavedIdeaAction, generatePrdAction, SavedIdeaInput, IdeaGenerationConfig } from "@/lib/actions/idea-pool";
+import { generateIdeasAction, saveIdeaAction, deleteSavedIdeaAction, generatePrdAction, getPrdAction, SavedIdeaInput, IdeaGenerationConfig } from "@/lib/actions/idea-pool";
 import { useToast } from "@/hooks/use-toast";
 
 import { IdeaPoolClientProps, SavedIdea } from "./idea-pool-types";
@@ -33,8 +33,14 @@ export function IdeaPoolClient({ initialSavedIdeas }: IdeaPoolClientProps) {
     // PRD modal state
     const [isPrdModalOpen, setIsPrdModalOpen] = useState(false);
     const [prdContent, setPrdContent] = useState("");
-    const [prdIdeaTitle, setPrdIdeaTitle] = useState("");
-    const [ideaPrdMap, setIdeaPrdMap] = useState<Record<string, boolean>>({});
+    const [activePrdIdea, setActivePrdIdea] = useState<SavedIdea | null>(null);
+    const [ideaPrdMap, setIdeaPrdMap] = useState<Record<string, boolean>>(() => {
+        const map: Record<string, boolean> = {};
+        initialSavedIdeas.forEach(idea => {
+            if (idea.prd) map[idea.id] = true;
+        });
+        return map;
+    });
 
     // Loading states
     const [isGenerating, setIsGenerating] = useState(false);
@@ -165,12 +171,19 @@ export function IdeaPoolClient({ initialSavedIdeas }: IdeaPoolClientProps) {
         return savedIdeas.some(idea => idea.title === title);
     };
 
-    const handleGeneratePrd = async (idea: SavedIdea) => {
+    const handleGeneratePrd = async (idea: SavedIdea, forceRegenerate = false) => {
         const prdLoadingId = `prd-${idea.id}`;
         setProcessingIds(prev => new Set(prev).add(prdLoadingId));
 
         try {
-            const result = await generatePrdAction(idea.id);
+            const hasExisting = ideaPrdMap[idea.id];
+
+            let result;
+            if (hasExisting && !forceRegenerate) {
+                result = await getPrdAction(idea.id);
+            } else {
+                result = await generatePrdAction(idea.id);
+            }
 
             if (result.error || !result.data) {
                 toast({
@@ -183,13 +196,15 @@ export function IdeaPoolClient({ initialSavedIdeas }: IdeaPoolClientProps) {
 
             setIdeaPrdMap(prev => ({ ...prev, [idea.id]: true }));
             setPrdContent(result.data.content);
-            setPrdIdeaTitle(idea.title);
+            setActivePrdIdea(idea);
             setIsPrdModalOpen(true);
 
-            toast({
-                title: "PRD Generated!",
-                description: "Your Product Requirements Document is ready.",
-            });
+            if (!hasExisting || forceRegenerate) {
+                toast({
+                    title: "PRD Generated!",
+                    description: "Your Product Requirements Document is ready.",
+                });
+            }
         } catch (error) {
             console.error(error);
             toast({
@@ -357,7 +372,11 @@ export function IdeaPoolClient({ initialSavedIdeas }: IdeaPoolClientProps) {
                 isOpen={isPrdModalOpen}
                 onClose={() => setIsPrdModalOpen(false)}
                 prdContent={prdContent}
-                ideaTitle={prdIdeaTitle}
+                ideaTitle={activePrdIdea?.title || ""}
+                isGenerating={activePrdIdea ? processingIds.has(`prd-${activePrdIdea.id}`) : false}
+                onRegenerate={() => {
+                    if (activePrdIdea) handleGeneratePrd(activePrdIdea, true);
+                }}
             />
         </div>
     );
